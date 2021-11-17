@@ -211,6 +211,9 @@ func MergeChangeStreamOptions(opts ...*ChangeStreamOptions) *ChangeStreamOptions
 		if cso.CustomPipeline != nil {
 			csOpts.CustomPipeline = cso.CustomPipeline
 		}
+		if cso.CursorBatchSize != nil {
+			csOpts.CursorBatchSize = cso.CursorBatchSize
+		}
 	}
 
 	return csOpts
