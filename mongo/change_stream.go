@@ -151,6 +151,9 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 		cs.aggregate.BatchSize(*cs.options.BatchSize)
 		cs.cursorOptions.BatchSize = *cs.options.BatchSize
 	}
+	if cs.options.CursorBatchSize != nil {
+		cs.cursorOptions.BatchSize = *cs.options.CursorBatchSize
+	}
 	if cs.options.MaxAwaitTime != nil {
 		cs.cursorOptions.MaxTimeMS = int64(*cs.options.MaxAwaitTime / time.Millisecond)
 	}
