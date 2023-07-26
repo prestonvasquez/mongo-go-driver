@@ -265,6 +265,18 @@ func (iv IndexView) CreateMany(ctx context.Context, models []IndexModel, opts ..
 		op.CommitQuorum(commitQuorum)
 	}
 
+	fmt.Println("before comment", option.Comment)
+	if option.Comment != nil {
+		comment, err := marshalValue(option.Comment, iv.coll.bsonOpts, iv.coll.registry)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println("COMMENT: ", comment)
+
+		op = op.Comment(comment)
+	}
+
 	err = op.Execute(ctx)
 	if err != nil {
 		_, err = processWriteError(err)

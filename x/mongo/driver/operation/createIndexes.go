@@ -38,6 +38,7 @@ type CreateIndexes struct {
 	result       CreateIndexesResult
 	serverAPI    *driver.ServerAPIOptions
 	timeout      *time.Duration
+	comment      bsoncore.Value
 }
 
 // CreateIndexesResult represents a createIndexes result returned by the server.
@@ -131,6 +132,9 @@ func (ci *CreateIndexes) command(dst []byte, desc description.SelectedServer) ([
 	}
 	if ci.indexes != nil {
 		dst = bsoncore.AppendArrayElement(dst, "indexes", ci.indexes)
+	}
+	if ci.comment.Type != bsontype.Type(0) {
+		dst = bsoncore.AppendValueElement(dst, "comment", ci.comment)
 	}
 	return dst, nil
 }
@@ -274,5 +278,15 @@ func (ci *CreateIndexes) Timeout(timeout *time.Duration) *CreateIndexes {
 	}
 
 	ci.timeout = timeout
+	return ci
+}
+
+// Comment sets a value to help trace an operation.
+func (ci *CreateIndexes) Comment(comment bsoncore.Value) *CreateIndexes {
+	if ci == nil {
+		ci = new(CreateIndexes)
+	}
+
+	ci.comment = comment
 	return ci
 }

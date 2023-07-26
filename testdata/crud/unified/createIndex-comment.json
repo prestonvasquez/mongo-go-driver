@@ -1,0 +1,78 @@
+{
+  "description": "createIndex-comment",
+  "schemaVersion": "1.16",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "crud-tests"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "crud-tests",
+      "documents": [
+        {
+          "_id": 1,
+          "x": "foo"
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "findOneAndUpdate DuplicateKey error is accessible",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "3.6"
+        }
+      ],
+      "operations": [
+        {
+          "name": "createIndex",
+          "object": "collection0",
+          "arguments": {
+            "keys": {
+              "x": 1
+            },
+            "unique": true,
+            "comment": "comment"
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "createIndex": "test",
+                  "comment": "comment"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

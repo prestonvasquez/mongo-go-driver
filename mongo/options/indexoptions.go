@@ -34,6 +34,12 @@ type CreateIndexesOptions struct {
 	// in its place to control the amount of time that a single operation can run before returning an error. MaxTime
 	// is ignored if Timeout is set on the client.
 	MaxTime *time.Duration
+
+	// A string or document that will be included in server logs, profiling
+	// logs, and currentOp queries to help trace the operation.  The default
+	// value is nil, which means that no comment will be included in the
+	// logs.
+	Comment interface{}
 }
 
 // CreateIndexes creates a new CreateIndexesOptions instance.
@@ -75,6 +81,12 @@ func (c *CreateIndexesOptions) SetCommitQuorumVotingMembers() *CreateIndexesOpti
 	return c
 }
 
+// SetComment sets the value for the Comment field.
+func (c *CreateIndexesOptions) SetComment(comment interface{}) *CreateIndexesOptions {
+	c.Comment = comment
+	return c
+}
+
 // MergeCreateIndexesOptions combines the given CreateIndexesOptions into a single CreateIndexesOptions in a last one
 // wins fashion.
 //
@@ -91,6 +103,9 @@ func MergeCreateIndexesOptions(opts ...*CreateIndexesOptions) *CreateIndexesOpti
 		}
 		if opt.CommitQuorum != nil {
 			c.CommitQuorum = opt.CommitQuorum
+		}
+		if opt.Comment != nil {
+			c.Comment = opt.Comment
 		}
 	}
 

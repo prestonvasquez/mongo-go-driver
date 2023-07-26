@@ -232,6 +232,7 @@ func executeCreateIndex(ctx context.Context, operation *operation) (*operationRe
 
 	var keys bson.Raw
 	indexOpts := options.Index()
+	createIndexesOpts := options.CreateIndexes()
 
 	elems, err := operation.Arguments.Elements()
 	if err != nil {
@@ -256,6 +257,8 @@ func executeCreateIndex(ctx context.Context, operation *operation) (*operationRe
 				return nil, fmt.Errorf("error creating collation: %v", err)
 			}
 			indexOpts.SetCollation(collation)
+		case "comment":
+			createIndexesOpts.SetComment(val)
 		case "defaultLanguage":
 			indexOpts.SetDefaultLanguage(val.StringValue())
 		case "expireAfterSeconds":
@@ -300,7 +303,7 @@ func executeCreateIndex(ctx context.Context, operation *operation) (*operationRe
 		Keys:    keys,
 		Options: indexOpts,
 	}
-	name, err := coll.Indexes().CreateOne(ctx, model)
+	name, err := coll.Indexes().CreateOne(ctx, model, createIndexesOpts)
 	return newValueResult(bsontype.String, bsoncore.AppendString(nil, name), err), nil
 }
 
