@@ -232,7 +232,7 @@ func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(ctx SessionCo
 
 	CommitLoop:
 		for {
-			err = s.CommitTransaction(ctx)
+			err = s.CommitTransaction(internal.NewBackgroundContext(ctx))
 			// End when error is nil, as transaction has been committed.
 			if err == nil {
 				return res, nil
