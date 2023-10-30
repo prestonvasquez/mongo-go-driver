@@ -445,17 +445,19 @@ func (coll *Collection) InsertOne(ctx context.Context, document interface{},
 func (coll *Collection) InsertMany(ctx context.Context, documents interface{},
 	opts ...*options.InsertManyOptions) (*InsertManyResult, error) {
 
-	dv := reflect.ValueOf(documents)
-	if dv.Kind() != reflect.Slice {
+	var docSlice []interface{}
+	switch value := documents.(type) {
+	case []interface{}:
+		docSlice = make([]interface{}, 0, len(value))
+		for i := 0; i < len(value); i++ {
+			docSlice = append(docSlice, value[i])
+		}
+	default:
 		return nil, ErrNotSlice
 	}
-	if dv.Len() == 0 {
-		return nil, ErrEmptySlice
-	}
 
-	docSlice := make([]interface{}, 0, dv.Len())
-	for i := 0; i < dv.Len(); i++ {
-		docSlice = append(docSlice, dv.Index(i).Interface())
+	if len(docSlice) == 0 {
+		return nil, ErrEmptySlice
 	}
 
 	result, err := coll.insert(ctx, docSlice, opts...)
