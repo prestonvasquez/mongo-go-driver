@@ -123,6 +123,10 @@ type Session interface {
 	// OperationTime returns the current operation time document associated with the session.
 	OperationTime() *primitive.Timestamp
 
+	// SnapshotTime returns the snapshot timestamp being used for the session.
+	// If the session is not a snapshot session, or no operations have run on the session yet, it will return nil.
+	SnapshotTime() *primitive.Timestamp
+
 	// Client the Client associated with the session.
 	Client() *Client
 
@@ -360,6 +364,11 @@ func (s *sessionImpl) AdvanceClusterTime(d bson.Raw) error {
 // OperationTime implements the Session interface.
 func (s *sessionImpl) OperationTime() *primitive.Timestamp {
 	return s.clientSession.OperationTime
+}
+
+// SnapshotTime implements the Session interface.
+func (s *sessionImpl) SnapshotTime() *primitive.Timestamp {
+	return s.clientSession.SnapshotTime
 }
 
 // AdvanceOperationTime implements the Session interface.
