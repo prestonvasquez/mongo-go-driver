@@ -53,6 +53,11 @@ type FindOptions struct {
 	Opts []func(*FindArgs) error
 }
 
+// Get will return the Opts list from FindOptions.
+func (fo FindOptions) Get() []func(*FindArgs) error {
+	return fo.Opts
+}
+
 // Find creates a new FindOptions instance.
 func Find() *FindOptions {
 	return &FindOptions{}

@@ -1404,7 +1404,7 @@ func (coll *Collection) Distinct(ctx context.Context, fieldName string, filter i
 //
 // For more information about the command, see https://www.mongodb.com/docs/manual/reference/command/find/.
 func (coll *Collection) Find(ctx context.Context, filter interface{},
-	opts ...*options.FindOptions) (cur *Cursor, err error) {
+	opts ...options.Getter[options.FindArgs]) (cur *Cursor, err error) {
 
 	if ctx == nil {
 		ctx = context.Background()
@@ -1436,13 +1436,9 @@ func (coll *Collection) Find(ctx context.Context, filter interface{},
 		rc = nil
 	}
 
-	fo := &options.FindArgs{}
-	for _, opt := range opts {
-		for _, optFn := range opt.Opts {
-			if err := optFn(fo); err != nil {
-				return nil, err
-			}
-		}
+	fo, err := options.Merge[options.FindArgs](opts)
+	if err != nil {
+		return nil, err
 	}
 
 	selector := makeReadPrefSelector(sess, coll.readSelector, coll.client.localThreshold)
@@ -1609,6 +1605,7 @@ func (coll *Collection) FindOne(ctx context.Context, filter interface{},
 		}
 		return nil
 	}
+
 	findOpts := &options.FindOptions{
 		Opts: []func(*options.FindArgs) error{opt},
 	}
