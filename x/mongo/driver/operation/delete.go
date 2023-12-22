@@ -115,7 +115,7 @@ func (d *Delete) Execute(ctx context.Context) error {
 		ServerAPI:         d.serverAPI,
 		Timeout:           d.timeout,
 		Logger:            d.logger,
-		SecurityToken:     d.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(d.deployment),
 	}.Execute(ctx)
 
 }
@@ -325,17 +325,6 @@ func (d *Delete) Logger(logger *logger.Logger) *Delete {
 	}
 
 	d.logger = logger
-
-	return d
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (d *Delete) SecurityToken(token string) *Delete {
-	if d == nil {
-		d = new(Delete)
-	}
-
-	d.securityToken = token
 
 	return d
 }

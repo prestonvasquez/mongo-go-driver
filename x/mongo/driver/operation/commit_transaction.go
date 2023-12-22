@@ -67,7 +67,7 @@ func (ct *CommitTransaction) Execute(ctx context.Context) error {
 		Selector:          ct.selector,
 		WriteConcern:      ct.writeConcern,
 		ServerAPI:         ct.serverAPI,
-		SecurityToken:     ct.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(ct.deployment),
 	}.Execute(ctx)
 
 }
@@ -199,16 +199,5 @@ func (ct *CommitTransaction) ServerAPI(serverAPI *driver.ServerAPIOptions) *Comm
 	}
 
 	ct.serverAPI = serverAPI
-	return ct
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (ct *CommitTransaction) SecurityToken(token string) *CommitTransaction {
-	if ct == nil {
-		ct = new(CommitTransaction)
-	}
-
-	ct.securityToken = token
-
 	return ct
 }

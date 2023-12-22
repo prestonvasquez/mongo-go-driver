@@ -60,7 +60,7 @@ func (es *EndSessions) Execute(ctx context.Context) error {
 		Deployment:        es.deployment,
 		Selector:          es.selector,
 		ServerAPI:         es.serverAPI,
-		SecurityToken:     es.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(es.deployment),
 	}.Execute(ctx)
 
 }
@@ -159,16 +159,5 @@ func (es *EndSessions) ServerAPI(serverAPI *driver.ServerAPIOptions) *EndSession
 	}
 
 	es.serverAPI = serverAPI
-	return es
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (es *EndSessions) SecurityToken(token string) *EndSessions {
-	if es == nil {
-		es = new(EndSessions)
-	}
-
-	es.securityToken = token
-
 	return es
 }

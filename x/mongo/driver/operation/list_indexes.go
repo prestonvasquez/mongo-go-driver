@@ -85,7 +85,7 @@ func (li *ListIndexes) Execute(ctx context.Context) error {
 		Type:           driver.Read,
 		ServerAPI:      li.serverAPI,
 		Timeout:        li.timeout,
-		SecurityToken:  li.securityToken,
+		SecurityToken:  driver.GetSecurityTokenFromDeployment(li.deployment),
 	}.Execute(ctx)
 
 }
@@ -232,16 +232,5 @@ func (li *ListIndexes) Timeout(timeout *time.Duration) *ListIndexes {
 	}
 
 	li.timeout = timeout
-	return li
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (li *ListIndexes) SecurityToken(token string) *ListIndexes {
-	if li == nil {
-		li = new(ListIndexes)
-	}
-
-	li.securityToken = token
-
 	return li
 }

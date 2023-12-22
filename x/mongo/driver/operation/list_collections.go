@@ -90,7 +90,7 @@ func (lc *ListCollections) Execute(ctx context.Context) error {
 		Legacy:            driver.LegacyListCollections,
 		ServerAPI:         lc.serverAPI,
 		Timeout:           lc.timeout,
-		SecurityToken:     lc.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(lc.deployment),
 	}.Execute(ctx)
 
 }
@@ -265,16 +265,5 @@ func (lc *ListCollections) Timeout(timeout *time.Duration) *ListCollections {
 	}
 
 	lc.timeout = timeout
-	return lc
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (lc *ListCollections) SecurityToken(token string) *ListCollections {
-	if lc == nil {
-		lc = new(ListCollections)
-	}
-
-	lc.securityToken = token
-
 	return lc
 }

@@ -122,6 +122,16 @@ func newServerSelectionState(selector description.ServerSelector, timeoutChan <-
 	}
 }
 
+var _ driver.SecurityTokenGetter = &SecurityTokenTopology{}
+
+type SecurityTokenTopology struct {
+	*Topology
+}
+
+func (stopo *SecurityTokenTopology) GetSecurityToken() string {
+	return stopo.cfg.SecurityToken
+}
+
 // New creates a new topology. A "nil" config is interpreted as the default configuration.
 func New(cfg *Config) (*Topology, error) {
 	if cfg == nil {

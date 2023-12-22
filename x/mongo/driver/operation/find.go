@@ -110,7 +110,7 @@ func (f *Find) Execute(ctx context.Context) error {
 		ServerAPI:         f.serverAPI,
 		Timeout:           f.timeout,
 		Logger:            f.logger,
-		SecurityToken:     f.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(f.deployment),
 	}.Execute(ctx)
 
 }
@@ -560,16 +560,5 @@ func (f *Find) Logger(logger *logger.Logger) *Find {
 	}
 
 	f.logger = logger
-	return f
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (f *Find) SecurityToken(token string) *Find {
-	if f == nil {
-		f = new(Find)
-	}
-
-	f.securityToken = token
-
 	return f
 }

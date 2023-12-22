@@ -189,7 +189,7 @@ func (db *Database) processRunCommand(ctx context.Context, cmd interface{},
 			ServerSelector(readSelect).ClusterClock(db.client.clock).
 			Database(db.name).Deployment(db.client.deployment).ReadConcern(db.readConcern).
 			Crypt(db.client.cryptFLE).ReadPreference(ro.ReadPreference).ServerAPI(db.client.serverAPI).
-			Timeout(db.client.timeout).Logger(db.client.logger).SecurityToken(db.client.securityToken),
+			Timeout(db.client.timeout).Logger(db.client.logger),
 		sess,
 		nil
 }
@@ -300,7 +300,7 @@ func (db *Database) Drop(ctx context.Context) error {
 		Session(sess).WriteConcern(wc).CommandMonitor(db.client.monitor).
 		ServerSelector(selector).ClusterClock(db.client.clock).
 		Database(db.name).Deployment(db.client.deployment).Crypt(db.client.cryptFLE).
-		ServerAPI(db.client.serverAPI).SecurityToken(db.client.securityToken)
+		ServerAPI(db.client.serverAPI)
 
 	err = op.Execute(ctx)
 
@@ -394,8 +394,7 @@ func (db *Database) ListCollections(ctx context.Context, filter interface{}, opt
 		Session(sess).ReadPreference(db.readPreference).CommandMonitor(db.client.monitor).
 		ServerSelector(selector).ClusterClock(db.client.clock).
 		Database(db.name).Deployment(db.client.deployment).Crypt(db.client.cryptFLE).
-		ServerAPI(db.client.serverAPI).Timeout(db.client.timeout).
-		SecurityToken(db.client.securityToken)
+		ServerAPI(db.client.serverAPI).Timeout(db.client.timeout)
 
 	cursorOpts := db.client.createBaseCursorOptions()
 	if lco.NameOnly != nil {
@@ -669,7 +668,7 @@ func (db *Database) createCollection(ctx context.Context, name string, opts ...*
 
 func (db *Database) createCollectionOperation(name string, opts ...*options.CreateCollectionOptions) (*operation.Create, error) {
 	cco := options.MergeCreateCollectionOptions(opts...)
-	op := operation.NewCreate(name).ServerAPI(db.client.serverAPI).SecurityToken(db.client.securityToken)
+	op := operation.NewCreate(name).ServerAPI(db.client.serverAPI)
 
 	if cco.Capped != nil {
 		op.Capped(*cco.Capped)
@@ -795,8 +794,7 @@ func (db *Database) CreateView(ctx context.Context, viewName, viewOn string, pip
 	op := operation.NewCreate(viewName).
 		ViewOn(viewOn).
 		Pipeline(pipelineArray).
-		ServerAPI(db.client.serverAPI).
-		SecurityToken(db.client.securityToken)
+		ServerAPI(db.client.serverAPI)
 	cvo := options.MergeCreateViewOptions(opts...)
 	if cvo.Collation != nil {
 		op.Collation(bsoncore.Document(cvo.Collation.ToDocument()))

@@ -114,7 +114,7 @@ func (i *Insert) Execute(ctx context.Context) error {
 		ServerAPI:         i.serverAPI,
 		Timeout:           i.timeout,
 		Logger:            i.logger,
-		SecurityToken:     i.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(i.deployment),
 	}.Execute(ctx)
 
 }
@@ -304,16 +304,5 @@ func (i *Insert) Logger(logger *logger.Logger) *Insert {
 	}
 
 	i.logger = logger
-	return i
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (i *Insert) SecurityToken(token string) *Insert {
-	if i == nil {
-		i = new(Insert)
-	}
-
-	i.securityToken = token
-
 	return i
 }

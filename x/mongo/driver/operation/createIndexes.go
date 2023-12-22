@@ -118,7 +118,7 @@ func (ci *CreateIndexes) Execute(ctx context.Context) error {
 		WriteConcern:      ci.writeConcern,
 		ServerAPI:         ci.serverAPI,
 		Timeout:           ci.timeout,
-		SecurityToken:     ci.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(ci.deployment),
 	}.Execute(ctx)
 
 }
@@ -276,16 +276,5 @@ func (ci *CreateIndexes) Timeout(timeout *time.Duration) *CreateIndexes {
 	}
 
 	ci.timeout = timeout
-	return ci
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (ci *CreateIndexes) SecurityToken(token string) *CreateIndexes {
-	if ci == nil {
-		ci = new(CreateIndexes)
-	}
-
-	ci.securityToken = token
-
 	return ci
 }

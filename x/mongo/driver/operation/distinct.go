@@ -106,7 +106,7 @@ func (d *Distinct) Execute(ctx context.Context) error {
 		Selector:          d.selector,
 		ServerAPI:         d.serverAPI,
 		Timeout:           d.timeout,
-		SecurityToken:     d.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(d.deployment),
 	}.Execute(ctx)
 
 }
@@ -309,16 +309,5 @@ func (d *Distinct) Timeout(timeout *time.Duration) *Distinct {
 	}
 
 	d.timeout = timeout
-	return d
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (d *Distinct) SecurityToken(token string) *Distinct {
-	if d == nil {
-		d = new(Distinct)
-	}
-
-	d.securityToken = token
-
 	return d
 }

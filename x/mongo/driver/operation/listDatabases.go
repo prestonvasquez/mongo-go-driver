@@ -164,7 +164,7 @@ func (ld *ListDatabases) Execute(ctx context.Context) error {
 		Crypt:          ld.crypt,
 		ServerAPI:      ld.serverAPI,
 		Timeout:        ld.timeout,
-		SecurityToken:  ld.securityToken,
+		SecurityToken:  driver.GetSecurityTokenFromDeployment(ld.deployment),
 	}.Execute(ctx)
 
 }
@@ -325,16 +325,5 @@ func (ld *ListDatabases) Timeout(timeout *time.Duration) *ListDatabases {
 	}
 
 	ld.timeout = timeout
-	return ld
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (ld *ListDatabases) SecurityToken(token string) *ListDatabases {
-	if ld == nil {
-		ld = new(ListDatabases)
-	}
-
-	ld.securityToken = token
-
 	return ld
 }

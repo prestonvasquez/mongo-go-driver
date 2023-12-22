@@ -38,6 +38,7 @@ type Config struct {
 	SRVMaxHosts            int
 	SRVServiceName         string
 	LoadBalanced           bool
+	SecurityToken          string
 }
 
 // ConvertToDriverAPIOptions converts a options.ServerAPIOptions instance to a driver.ServerAPIOptions.

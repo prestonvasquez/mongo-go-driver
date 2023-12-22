@@ -267,3 +267,15 @@ const (
 func (rm RetryMode) Enabled() bool {
 	return rm == RetryOnce || rm == RetryOncePerCommand || rm == RetryContext
 }
+
+type SecurityTokenGetter interface {
+	GetSecurityToken() string
+}
+
+func GetSecurityTokenFromDeployment(deployment Deployment) string {
+	if sdep, ok := deployment.(SecurityTokenGetter); ok {
+		return sdep.GetSecurityToken()
+	}
+
+	return ""
+}

@@ -98,16 +98,17 @@ func Setup(setupOpts ...*SetupOptions) error {
 	clientOpts := options.Client().ApplyURI(uri)
 	testutil.AddTestServerAPIVersion(clientOpts)
 
-	if tok := os.Getenv("MONGODB_SECURITY_TOKEN"); tok != "" {
-		clientOpts = clientOpts.SetSecurityToken(tok)
-	}
-
 	cfg, err := topology.NewConfig(clientOpts, nil)
 	if err != nil {
 		return fmt.Errorf("error constructing topology config: %v", err)
 	}
 
+	if tok := os.Getenv("MONGODB_SECURITY_TOKEN"); tok != "" && clientOpts.Deployment != nil {
+		cfg.SecurityToken = tok
+	}
+
 	testContext.topo, err = topology.New(cfg)
+
 	if err != nil {
 		return fmt.Errorf("error creating topology: %v", err)
 	}

@@ -113,7 +113,7 @@ func (a *Aggregate) Execute(ctx context.Context) error {
 		IsOutputAggregate:              a.hasOutputStage,
 		MaxTime:                        a.maxTime,
 		Timeout:                        a.timeout,
-		SecurityToken:                  a.securityToken,
+		SecurityToken:                  driver.GetSecurityTokenFromDeployment(a.deployment),
 	}.Execute(ctx)
 
 }
@@ -418,16 +418,5 @@ func (a *Aggregate) Timeout(timeout *time.Duration) *Aggregate {
 	}
 
 	a.timeout = timeout
-	return a
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (a *Aggregate) SecurityToken(token string) *Aggregate {
-	if a == nil {
-		a = new(Aggregate)
-	}
-
-	a.securityToken = token
-
 	return a
 }

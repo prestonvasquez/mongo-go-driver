@@ -103,7 +103,7 @@ func (dc *DropCollection) Execute(ctx context.Context) error {
 		WriteConcern:      dc.writeConcern,
 		ServerAPI:         dc.serverAPI,
 		Timeout:           dc.timeout,
-		SecurityToken:     dc.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(dc.deployment),
 	}.Execute(ctx)
 
 }
@@ -220,16 +220,5 @@ func (dc *DropCollection) Timeout(timeout *time.Duration) *DropCollection {
 	}
 
 	dc.timeout = timeout
-	return dc
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (dc *DropCollection) SecurityToken(token string) *DropCollection {
-	if dc == nil {
-		dc = new(DropCollection)
-	}
-
-	dc.securityToken = token
-
 	return dc
 }

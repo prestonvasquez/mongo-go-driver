@@ -296,7 +296,7 @@ func (bc *BatchCursor) KillCursor(ctx context.Context) error {
 	}
 
 	return Operation{
-		CommandFn: func(dst []byte, desc description.SelectedServer) ([]byte, error) {
+		CommandFn: func(dst []byte, _ description.SelectedServer) ([]byte, error) {
 			dst = bsoncore.AppendStringElement(dst, "killCursors", bc.collection)
 			dst = bsoncore.BuildArrayElement(dst, "cursors", bsoncore.Value{Type: bsontype.Int64, Data: bsoncore.AppendInt64(nil, bc.id)})
 			return dst, nil
@@ -346,7 +346,7 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 	}
 
 	bc.err = Operation{
-		CommandFn: func(dst []byte, desc description.SelectedServer) ([]byte, error) {
+		CommandFn: func(dst []byte, _ description.SelectedServer) ([]byte, error) {
 			dst = bsoncore.AppendInt64Element(dst, "getMore", bc.id)
 			dst = bsoncore.AppendStringElement(dst, "collection", bc.collection)
 			if numToReturn > 0 {

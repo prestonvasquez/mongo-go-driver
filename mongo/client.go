@@ -79,8 +79,6 @@ type Client struct {
 	metadataClientFLE  *Client
 	internalClientFLE  *Client
 	encryptedFieldsMap map[string]interface{}
-
-	securityToken string
 }
 
 // Connect creates a new Client and then initializes it using the Connect method. This is equivalent to calling
@@ -232,10 +230,6 @@ func NewClient(opts ...*options.ClientOptions) (*Client, error) {
 	client.logger, err = newLogger(clientOpt.LoggerOptions)
 	if err != nil {
 		return nil, fmt.Errorf("invalid logger options: %w", err)
-	}
-
-	if clientOpt.SecurityToken != nil {
-		client.securityToken = *clientOpt.SecurityToken
 	}
 
 	return client, nil
@@ -439,7 +433,7 @@ func (c *Client) endSessions(ctx context.Context) {
 	sessionIDs := c.sessionPool.IDSlice()
 	op := operation.NewEndSessions(nil).ClusterClock(c.clock).Deployment(c.deployment).
 		ServerSelector(description.ReadPrefSelector(readpref.PrimaryPreferred())).CommandMonitor(c.monitor).
-		Database("admin").Crypt(c.cryptFLE).ServerAPI(c.serverAPI).SecurityToken(c.securityToken)
+		Database("admin").Crypt(c.cryptFLE).ServerAPI(c.serverAPI)
 
 	totalNumIDs := len(sessionIDs)
 	var currentBatch []bsoncore.Document
@@ -700,7 +694,7 @@ func (c *Client) ListDatabases(ctx context.Context, filter interface{}, opts ...
 	op := operation.NewListDatabases(filterDoc).
 		Session(sess).ReadPreference(c.readPreference).CommandMonitor(c.monitor).
 		ServerSelector(selector).ClusterClock(c.clock).Database("admin").Deployment(c.deployment).Crypt(c.cryptFLE).
-		ServerAPI(c.serverAPI).Timeout(c.timeout).SecurityToken(c.securityToken)
+		ServerAPI(c.serverAPI).Timeout(c.timeout)
 
 	if ldo.NameOnly != nil {
 		op = op.NameOnly(*ldo.NameOnly)
@@ -844,7 +838,7 @@ func (c *Client) createBaseCursorOptions() driver.CursorOptions {
 		CommandMonitor: c.monitor,
 		Crypt:          c.cryptFLE,
 		ServerAPI:      c.serverAPI,
-		SecurityToken:  c.securityToken,
+		SecurityToken:  driver.GetSecurityTokenFromDeployment(c.deployment),
 	}
 }
 

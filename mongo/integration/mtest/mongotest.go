@@ -27,6 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
 
 var (
@@ -633,10 +634,6 @@ func (t *T) createTestClient() {
 		clientOpts.SetServerAPIOptions(options.ServerAPI(driver.TestServerAPIVersion))
 	}
 
-	if tok := os.Getenv("MONGODB_SECURITY_TOKEN"); tok != "" {
-		clientOpts = clientOpts.SetSecurityToken(tok)
-	}
-
 	// Setup command monitor
 	var customMonitor = clientOpts.Monitor
 	clientOpts.SetMonitor(&event.CommandMonitor{
@@ -712,6 +709,20 @@ func (t *T) createTestClient() {
 			// Only specify URI if the deployment is not set to avoid setting topology/server options along with the
 			// deployment.
 			uriOpts = options.Client().ApplyURI(testContext.connString.Original)
+
+			if tok := os.Getenv("MONGODB_SECURITY_TOKEN"); tok != "" && clientOpts.Deployment != nil {
+				topoCfg, err := topology.NewConfig(clientOpts, nil)
+				if err != nil {
+					panic(err)
+				}
+
+				topo, err := topology.New(topoCfg)
+				if err != nil {
+					panic(err)
+				}
+
+				clientOpts.Deployment = &topology.SecurityTokenTopology{Topology: topo}
+			}
 		}
 
 		// Pass in uriOpts first so clientOpts wins if there are any conflicting settings.

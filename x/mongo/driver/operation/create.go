@@ -78,7 +78,7 @@ func (c *Create) Execute(ctx context.Context) error {
 		Selector:          c.selector,
 		WriteConcern:      c.writeConcern,
 		ServerAPI:         c.serverAPI,
-		SecurityToken:     c.securityToken,
+		SecurityToken:     driver.GetSecurityTokenFromDeployment(c.deployment),
 	}.Execute(ctx)
 
 }
@@ -400,16 +400,5 @@ func (c *Create) ClusteredIndex(ci bsoncore.Document) *Create {
 	}
 
 	c.clusteredIndex = ci
-	return c
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (c *Create) SecurityToken(token string) *Create {
-	if c == nil {
-		c = new(Create)
-	}
-
-	c.securityToken = token
-
 	return c
 }

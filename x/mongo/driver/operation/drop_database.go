@@ -54,7 +54,7 @@ func (dd *DropDatabase) Execute(ctx context.Context) error {
 		Selector:       dd.selector,
 		WriteConcern:   dd.writeConcern,
 		ServerAPI:      dd.serverAPI,
-		SecurityToken:  dd.securityToken,
+		SecurityToken:  driver.GetSecurityTokenFromDeployment(dd.deployment),
 	}.Execute(ctx)
 
 }
@@ -152,16 +152,5 @@ func (dd *DropDatabase) ServerAPI(serverAPI *driver.ServerAPIOptions) *DropDatab
 	}
 
 	dd.serverAPI = serverAPI
-	return dd
-}
-
-// SecurityToken sets the JWT security token for this operation.
-func (dd *DropDatabase) SecurityToken(token string) *DropDatabase {
-	if dd == nil {
-		dd = new(DropDatabase)
-	}
-
-	dd.securityToken = token
-
 	return dd
 }
