@@ -408,6 +408,9 @@ func (c *Client) StartSession(opts ...*options.SessionOptions) (Session, error) 
 	if sopts.Snapshot != nil {
 		coreOpts.Snapshot = sopts.Snapshot
 	}
+	if sopts.RequireNew != nil {
+		coreOpts.RequireNew = sopts.RequireNew
+	}
 
 	sess, err := session.NewClientSession(c.sessionPool, c.id, coreOpts)
 	if err != nil {

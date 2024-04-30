@@ -48,6 +48,10 @@ type SessionOptions struct {
 	// be set to true if CausalConsistency is set to true. Transactions and write operations are not allowed on
 	// snapshot sessions and will error. The default value is false.
 	Snapshot *bool
+
+	// RequireNew ensures that a call to [Client.StartSession] creates a new
+	// server session rather than checking one out from the pool.
+	RequireNew *bool
 }
 
 // Session creates a new SessionOptions instance.
@@ -96,6 +100,12 @@ func (s *SessionOptions) SetSnapshot(b bool) *SessionOptions {
 	return s
 }
 
+// SetRequireNew sets the value for the RequireNew field.
+func (s *SessionOptions) SetRequireNew(b bool) *SessionOptions {
+	s.RequireNew = &b
+	return s
+}
+
 // MergeSessionOptions combines the given SessionOptions instances into a single SessionOptions in a last-one-wins
 // fashion.
 //
@@ -124,6 +134,9 @@ func MergeSessionOptions(opts ...*SessionOptions) *SessionOptions {
 		}
 		if opt.Snapshot != nil {
 			s.Snapshot = opt.Snapshot
+		}
+		if opt.RequireNew != nil {
+			s.RequireNew = opt.RequireNew
 		}
 	}
 	if s.CausalConsistency == nil && (s.Snapshot == nil || !*s.Snapshot) {

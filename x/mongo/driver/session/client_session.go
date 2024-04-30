@@ -133,6 +133,7 @@ type Client struct {
 	RecoveryToken    bson.Raw
 	PinnedConnection LoadBalancedTransactionConnection
 	SnapshotTime     *primitive.Timestamp
+	RequireNew       bool
 }
 
 func getClusterTime(clusterTime bson.Raw) (uint32, uint32) {
@@ -207,6 +208,9 @@ func NewClientSession(pool *Pool, clientID uuid.UUID, opts ...*ClientOptions) (*
 	if mergedOpts.Snapshot != nil {
 		c.Snapshot = *mergedOpts.Snapshot
 	}
+	if mergedOpts.RequireNew != nil {
+		c.RequireNew = *mergedOpts.RequireNew
+	}
 
 	// For explicit sessions, the default for causalConsistency is true, unless Snapshot is
 	// enabled, then it's false. Set the default and then allow any explicit causalConsistency
@@ -230,7 +234,12 @@ func NewClientSession(pool *Pool, clientID uuid.UUID, opts ...*ClientOptions) (*
 // SetServer will check out a session from the client session pool.
 func (c *Client) SetServer() error {
 	var err error
-	c.Server, err = c.pool.GetSession()
+	if c.RequireNew {
+		c.Server, err = newServerSession()
+	} else {
+		c.Server, err = c.pool.GetSession()
+	}
+
 	return err
 }
 
