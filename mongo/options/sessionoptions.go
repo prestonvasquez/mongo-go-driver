@@ -49,7 +49,7 @@ type SessionOptions struct {
 	// snapshot sessions and will error. The default value is false.
 	Snapshot *bool
 
-	// RequireNew ensures that a call to [Client.StartSession] creates a new
+	// RequireNew ensures that starting a session with a client creates a new
 	// server session rather than checking one out from the pool.
 	RequireNew *bool
 }
