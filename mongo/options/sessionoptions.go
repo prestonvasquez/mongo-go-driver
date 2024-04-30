@@ -50,7 +50,8 @@ type SessionOptions struct {
 	Snapshot *bool
 
 	// RequireNew ensures that starting a session with a client creates a new
-	// server session rather than checking one out from the pool.
+	// server session rather than checking one out from the pool. Since this
+	// avoids pooling, closing the server session is up to the caller.
 	RequireNew *bool
 }
 
