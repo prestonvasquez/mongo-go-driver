@@ -236,6 +236,11 @@ func (c *Client) SetServer() error {
 	var err error
 	if c.RequireNew {
 		c.Server, err = newServerSession()
+
+		// Mark the server as dirty so that it won't be returned to the pool.
+		if c.Server != nil {
+			c.Server.MarkDirty()
+		}
 	} else {
 		c.Server, err = c.pool.GetSession()
 	}
