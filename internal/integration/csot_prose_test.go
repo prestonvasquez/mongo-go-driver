@@ -85,7 +85,7 @@ func TestCSOTProse(t *testing.T) {
 	})
 
 	mt.Run("8. server selection", func(mt *mtest.T) {
-		cliOpts := options.Client().ApplyURI("mongodb://invalid/?serverSelectionTimeoutMS=100")
+		cliOpts := options.Client().ApplyURI("mongodb://invalid1/?serverSelectionTimeoutMS=100")
 		mtOpts := mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored if timeoutMS is not set", mtOpts, func(mt *mtest.T) {
 			mt.Parallel()
