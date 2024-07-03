@@ -126,6 +126,8 @@ func TestCSOTProse(t *testing.T) {
 		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=200&serverSelectionTimeoutMS=100")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored for server selection if it's lower than timeoutMS", mtOpts, func(mt *mtest.T) {
+			mt.Parallel()
+
 			callback := func() bool {
 				err := mt.Client.Ping(context.Background(), nil)
 				assert.Error(mt, err, "expected Ping error, got nil")
