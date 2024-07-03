@@ -85,7 +85,7 @@ func TestCSOTProse(t *testing.T) {
 	})
 
 	mt.Run("8. server selection", func(mt *mtest.T) {
-		cliOpts := options.Client().ApplyURI("mongodb://invalid/?serverSelectionTimeoutMS=100")
+		cliOpts := options.Client().ApplyURI("mongodb://yeep/?serverSelectionTimeoutMS=100")
 		mtOpts := mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored if timeoutMS is not set", mtOpts, func(mt *mtest.T) {
 			callback := func() bool {
@@ -102,7 +102,7 @@ func TestCSOTProse(t *testing.T) {
 				"expected ping to fail within 150ms")
 		})
 
-		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=100&serverSelectionTimeoutMS=200")
+		cliOpts = options.Client().ApplyURI("mongodb://yoop/?timeoutMS=100&serverSelectionTimeoutMS=200")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("timeoutMS honored for server selection if it's lower than serverSelectionTimeoutMS", mtOpts, func(mt *mtest.T) {
 			callback := func() bool {
@@ -119,7 +119,7 @@ func TestCSOTProse(t *testing.T) {
 				"expected ping to fail within 150ms")
 		})
 
-		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=200&serverSelectionTimeoutMS=100")
+		cliOpts = options.Client().ApplyURI("mongodb://mpr/?timeoutMS=200&serverSelectionTimeoutMS=100")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored for server selection if it's lower than timeoutMS", mtOpts, func(mt *mtest.T) {
 			callback := func() bool {
@@ -136,7 +136,7 @@ func TestCSOTProse(t *testing.T) {
 				"expected ping to fail within 150ms")
 		})
 
-		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=0&serverSelectionTimeoutMS=100")
+		cliOpts = options.Client().ApplyURI("mongodb://yump/?timeoutMS=0&serverSelectionTimeoutMS=100")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored for server selection if timeoutMS=0", mtOpts, func(mt *mtest.T) {
 			callback := func() bool {
