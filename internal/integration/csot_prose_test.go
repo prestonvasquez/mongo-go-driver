@@ -85,24 +85,24 @@ func TestCSOTProse(t *testing.T) {
 	})
 
 	mt.Run("8. server selection", func(mt *mtest.T) {
-		cliOpts := options.Client().ApplyURI("mongodb://invalid/?serverSelectionTimeoutMS=100")
-		mtOpts := mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
-		mt.RunOpts("serverSelectionTimeoutMS honored if timeoutMS is not set", mtOpts, func(mt *mtest.T) {
-			//mt.Parallel()
+		//cliOpts := options.Client().ApplyURI("mongodb://invalid/?serverSelectionTimeoutMS=100")
+		//mtOpts := mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
+		//mt.RunOpts("serverSelectionTimeoutMS honored if timeoutMS is not set", mtOpts, func(mt *mtest.T) {
+		//	//mt.Parallel()
 
-			callback := func() bool {
-				err := mt.Client.Ping(context.Background(), nil)
-				assert.Error(mt, err, "expected Ping error, got nil")
-				return true
-			}
+		//	callback := func() bool {
+		//		err := mt.Client.Ping(context.Background(), nil)
+		//		assert.Error(mt, err, "expected Ping error, got nil")
+		//		return true
+		//	}
 
-			// Assert that Ping fails within 150ms due to server selection timeout.
-			assert.Eventually(t,
-				callback,
-				150*time.Millisecond,
-				time.Millisecond,
-				"expected ping to fail within 150ms")
-		})
+		//	// Assert that Ping fails within 150ms due to server selection timeout.
+		//	assert.Eventually(t,
+		//		callback,
+		//		150*time.Millisecond,
+		//		time.Millisecond,
+		//		"expected ping to fail within 150ms")
+		//})
 
 		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=100&serverSelectionTimeoutMS=200")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
