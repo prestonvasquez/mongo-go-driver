@@ -85,10 +85,10 @@ func TestCSOTProse(t *testing.T) {
 	})
 
 	mt.Run("8. server selection", func(mt *mtest.T) {
-		cliOpts := options.Client().ApplyURI("mongodb://invalid1/?serverSelectionTimeoutMS=100")
+		cliOpts := options.Client().ApplyURI("mongodb://invalid/?serverSelectionTimeoutMS=100")
 		mtOpts := mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored if timeoutMS is not set", mtOpts, func(mt *mtest.T) {
-			mt.Parallel()
+			//mt.Parallel()
 
 			callback := func() bool {
 				err := mt.Client.Ping(context.Background(), nil)
@@ -104,7 +104,7 @@ func TestCSOTProse(t *testing.T) {
 				"expected ping to fail within 150ms")
 		})
 
-		cliOpts = options.Client().ApplyURI("mongodb://invalid2/?timeoutMS=100&serverSelectionTimeoutMS=200")
+		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=100&serverSelectionTimeoutMS=200")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("timeoutMS honored for server selection if it's lower than serverSelectionTimeoutMS", mtOpts, func(mt *mtest.T) {
 			mt.Parallel()
@@ -123,7 +123,7 @@ func TestCSOTProse(t *testing.T) {
 				"expected ping to fail within 150ms")
 		})
 
-		cliOpts = options.Client().ApplyURI("mongodb://invalid3/?timeoutMS=200&serverSelectionTimeoutMS=100")
+		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=200&serverSelectionTimeoutMS=100")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored for server selection if it's lower than timeoutMS", mtOpts, func(mt *mtest.T) {
 			mt.Parallel()
@@ -142,7 +142,7 @@ func TestCSOTProse(t *testing.T) {
 				"expected ping to fail within 150ms")
 		})
 
-		cliOpts = options.Client().ApplyURI("mongodb://invalid4/?timeoutMS=0&serverSelectionTimeoutMS=100")
+		cliOpts = options.Client().ApplyURI("mongodb://invalid/?timeoutMS=0&serverSelectionTimeoutMS=100")
 		mtOpts = mtest.NewOptions().ClientOptions(cliOpts).CreateCollection(false)
 		mt.RunOpts("serverSelectionTimeoutMS honored for server selection if timeoutMS=0", mtOpts, func(mt *mtest.T) {
 			mt.Parallel()
