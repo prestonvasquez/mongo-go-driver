@@ -15,6 +15,7 @@ require (
 )
 
 require (
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
