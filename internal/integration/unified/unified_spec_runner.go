@@ -87,6 +87,20 @@ var (
 		//  (BadValue) cannot set maxTimeMS on getMore command for a non-awaitData cursor
 		//
 		"Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset": "maxTimeMS can't be set on a getMore. See DRIVERS-2953",
+
+		// TODO(GODRIVER-3480): Remove this if we become CSOT compliant or update
+		// the comment if we decide to leave current behavior.
+		"timeoutMS applies to full resume attempt in a next call":             "changeStream.Next() does not inherit collection.Watch() deadline",
+		"change stream can be iterated again if previous iteration times out": "changeStream.Next() does not inherit collection.Watch() deadline",
+		"timeoutMS is refreshed for getMore - failure":                        "changeStream.Next() does not inherit collection.Watch() deadline",
+		"timeoutMS is refreshed for getMore if maxAwaitTimeMS is set":         "changeStream.Next() does not inherit collection.Watch() deadline",
+		"timeoutMS is refreshed for getMore if maxAwaitTimeMS is not set":     "changeStream.Next() does not inherit collection.Watch() deadline",
+
+		// TODO(GODRIVER-3473): Change stream should validate that timeoutMS is set
+		// to a non-zero value, and maxAwaitTimeMS is greater than or equal to
+		// timeoutMS at when constructing a cursor, not when calling Next().
+		"error if maxAwaitTimeMS is greater than timeoutMS": "timeoutMS validations should be constructor-level validations",
+		"error if maxAwaitTimeMS is equal to timeoutMS":     "timeoutMS validations should be constructor-level validations",
 	}
 
 	logMessageValidatorTimeout = 10 * time.Millisecond
