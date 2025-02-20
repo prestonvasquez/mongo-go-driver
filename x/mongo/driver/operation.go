@@ -1532,6 +1532,8 @@ func (op Operation) addWriteConcern(dst []byte, desc description.SelectedServer)
 	return append(bsoncore.AppendHeader(dst, t, "writeConcern"), data...), nil
 }
 
+var UniqueSessionIDs sync.Map
+
 func (op Operation) addSession(dst []byte, desc description.SelectedServer) ([]byte, error) {
 	client := op.Client
 
@@ -1548,6 +1550,14 @@ func (op Operation) addSession(dst []byte, desc description.SelectedServer) ([]b
 		return dst, err
 	}
 	dst = bsoncore.AppendDocumentElement(dst, "lsid", client.SessionID)
+
+	rawSessionID := bson.Raw(client.SessionID)
+	idRV, err := rawSessionID.LookupErr("id")
+	if err != nil {
+		panic(err)
+	}
+
+	UniqueSessionIDs.Store(string(idRV.Value), true)
 
 	var addedTxnNumber bool
 	if op.Type == Write && client.RetryWrite {

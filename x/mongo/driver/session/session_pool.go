@@ -72,8 +72,14 @@ func (p *Pool) updateTimeout() {
 	}
 }
 
+var DisableSessionPooling bool
+
 // GetSession retrieves an unexpired session from the pool.
 func (p *Pool) GetSession() (*Server, error) {
+	if DisableSessionPooling {
+		return p.createServerSession()
+	}
+
 	p.mutex.Lock() // prevent changing the linked list while seeing if sessions have expired
 	defer p.mutex.Unlock()
 
@@ -113,6 +119,10 @@ func (p *Pool) GetSession() (*Server, error) {
 
 // ReturnSession returns a session to the pool if it has not expired.
 func (p *Pool) ReturnSession(ss *Server) {
+	if DisableSessionPooling {
+		return
+	}
+
 	if ss == nil {
 		return
 	}
