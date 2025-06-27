@@ -7,6 +7,7 @@
 package topology
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"encoding/binary"
@@ -53,7 +54,8 @@ type connection struct {
 	state int64
 
 	id                   string
-	nc                   net.Conn // When nil, the connection is closed.
+	nc                   net.Conn      // When nil, the connection is closed.
+	br                   *bufio.Reader // Buffered reader for the connection.
 	addr                 address.Address
 	idleTimeout          time.Duration
 	idleStart            atomic.Value // Stores a time.Time
@@ -232,6 +234,9 @@ func (c *connection) connect(ctx context.Context) (err error) {
 		}
 		c.nc = tlsNc
 	}
+
+	// Wrap the raw connection in a bufio.Reader for buffered reads.
+	c.br = bufio.NewReader(c.nc)
 
 	// running hello and authentication is handled by a handshaker on the configuration instance.
 	handshaker := c.config.handshaker
@@ -473,6 +478,11 @@ func (c *connection) read(ctx context.Context) (bytesRead []byte, errMsg string,
 	// We do a ReadFull into an array here instead of doing an opportunistic ReadAtLeast into dst
 	// because there might be more than one wire message waiting to be read, for example when
 	// reading messages from an exhaust cursor.
+	//
+	// This 4-byte length prefix must come directly from the raw net.Conn (c.nc)
+	// not from c.br (bufio.Reader). This ensures that custom dialers see
+	// exactly one 4-byte Read call for the header. Otherwise, bufio.Reader would
+	// do a large internal fill (e.g. 4096 bytes) and hide that syscall.
 	n, err := io.ReadFull(c.nc, sizeBuf[:])
 	if err != nil {
 		if l := int32(n); l == 0 && isCSOTTimeout(err) {
@@ -488,7 +498,7 @@ func (c *connection) read(ctx context.Context) (bytesRead []byte, errMsg string,
 	dst := make([]byte, size)
 	copy(dst, sizeBuf[:])
 
-	n, err = io.ReadFull(c.nc, dst[4:])
+	n, err = io.ReadFull(c.br, dst[4:])
 	if err != nil {
 		remainingBytes := size - 4 - int32(n)
 		if remainingBytes > 0 && isCSOTTimeout(err) {
