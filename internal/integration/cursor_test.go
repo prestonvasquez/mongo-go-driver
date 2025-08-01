@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/internal/assert"
 	"go.mongodb.org/mongo-driver/v2/internal/failpoint"
 	"go.mongodb.org/mongo-driver/v2/internal/integration/mtest"
+	"go.mongodb.org/mongo-driver/v2/internal/require"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -303,6 +304,124 @@ func TestCursor(t *testing.T) {
 		batchSize = sizeVal.Int32()
 		assert.Equal(mt, int32(4), batchSize, "expected batchSize 4, got %v", batchSize)
 	})
+}
+
+func TestCursor_tailableAwaitData_ShortCircuitingGetMore(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().CreateClient(false))
+
+	cappedOpts := options.CreateCollection().SetCapped(true).
+		SetSizeInBytes(1024 * 64)
+
+	mtOpts := mtest.NewOptions().CollectionCreateOptions(cappedOpts)
+	tests := []struct {
+		name             string
+		deadline         time.Duration
+		maxAwaitTime     time.Duration
+		wantShortCircuit bool
+	}{
+		{
+			name:             "maxAwaitTime less than operation timeout",
+			deadline:         200 * time.Millisecond,
+			maxAwaitTime:     100 * time.Millisecond,
+			wantShortCircuit: false,
+		},
+		{
+			name:             "maxAwaitTime equal to operation timeout",
+			deadline:         200 * time.Millisecond,
+			maxAwaitTime:     200 * time.Millisecond,
+			wantShortCircuit: true,
+		},
+		{
+			name:             "maxAwaitTime greater than operation timeout",
+			deadline:         200 * time.Millisecond,
+			maxAwaitTime:     300 * time.Millisecond,
+			wantShortCircuit: true,
+		},
+	}
+
+	for _, tt := range tests {
+		mt.Run(tt.name, func(mt *mtest.T) {
+			mt.RunOpts("find", mtOpts, func(mt *mtest.T) {
+				initCollection(mt, mt.Coll)
+
+				// Create a find cursor
+				opts := options.Find().
+					SetBatchSize(1).
+					SetMaxAwaitTime(tt.maxAwaitTime).
+					SetCursorType(options.TailableAwait)
+
+				ctx, cancel := context.WithTimeout(context.Background(), tt.deadline)
+				defer cancel()
+
+				cur, err := mt.Coll.Find(ctx, bson.D{{Key: "x", Value: 3}}, opts)
+				require.NoError(mt, err, "Find error: %v", err)
+
+				// Close to return the session to the pool.
+				defer cur.Close(context.Background())
+
+				ok := cur.Next(ctx)
+				if tt.wantShortCircuit {
+					assert.False(mt, ok, "expected Next to return false, got true")
+					assert.EqualError(t, cur.Err(), "MaxAwaitTime must be less than the operation timeout")
+				} else {
+					assert.True(mt, ok, "expected Next to return true, got false")
+					assert.NoError(mt, cur.Err(), "expected no error, got %v", cur.Err())
+				}
+			})
+
+			mt.RunOpts("aggregate", mtOpts, func(mt *mtest.T) {
+				initCollection(mt, mt.Coll)
+
+				// Create a find cursor
+				opts := options.Aggregate().
+					SetBatchSize(1).
+					SetMaxAwaitTime(tt.maxAwaitTime)
+
+				ctx, cancel := context.WithTimeout(context.Background(), tt.deadline)
+				defer cancel()
+
+				cur, err := mt.Coll.Aggregate(ctx, []bson.D{}, opts)
+				require.NoError(mt, err, "Aggregate error: %v", err)
+
+				// Close to return the session to the pool.
+				defer cur.Close(context.Background())
+
+				ok := cur.Next(ctx)
+				if tt.wantShortCircuit {
+					assert.False(mt, ok, "expected Next to return false, got true")
+					assert.EqualError(t, cur.Err(), "MaxAwaitTime must be less than the operation timeout")
+				} else {
+					assert.True(mt, ok, "expected Next to return true, got false")
+					assert.NoError(mt, cur.Err(), "expected no error, got %v", cur.Err())
+				}
+			})
+
+			// The $changeStream stage is only supported on replica sets.
+			watchOpts := mtOpts.Topologies(mtest.ReplicaSet, mtest.Sharded)
+			mt.RunOpts("watch", watchOpts, func(mt *mtest.T) {
+				initCollection(mt, mt.Coll)
+
+				// Create a find cursor
+				opts := options.ChangeStream().SetMaxAwaitTime(tt.maxAwaitTime)
+
+				ctx, cancel := context.WithTimeout(context.Background(), tt.deadline)
+				defer cancel()
+
+				cur, err := mt.Coll.Watch(ctx, []bson.D{}, opts)
+				require.NoError(mt, err, "Watch error: %v", err)
+
+				// Close to return the session to the pool.
+				defer cur.Close(context.Background())
+
+				if tt.wantShortCircuit {
+					ok := cur.Next(ctx)
+
+					assert.False(mt, ok, "expected Next to return false, got true")
+					assert.EqualError(mt, cur.Err(), "MaxAwaitTime must be less than the operation timeout")
+				}
+			})
+		})
+	}
 }
 
 type tryNextCursor interface {
