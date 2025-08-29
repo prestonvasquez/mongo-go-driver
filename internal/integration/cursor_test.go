@@ -319,7 +319,7 @@ func parseMaxAwaitTime(mt *mtest.T, evt *event.CommandStartedEvent) int64 {
 	return got
 }
 
-func tadcFindFactory(ctx context.Context, mt *mtest.T) (*mongo.Cursor, func() error) {
+func tadcFindFactory(ctx context.Context, mt *mtest.T) *mongo.Cursor {
 	mt.Helper()
 
 	initCollection(mt, mt.Coll)
@@ -327,10 +327,10 @@ func tadcFindFactory(ctx context.Context, mt *mtest.T) (*mongo.Cursor, func() er
 		options.Find().SetBatchSize(1).SetCursorType(options.TailableAwait))
 	require.NoError(mt, err, "Find error: %v", err)
 
-	return cur, func() error { return cur.Close(context.Background()) }
+	return cur
 }
 
-func tadcAggregateFactory(ctx context.Context, mt *mtest.T) (*mongo.Cursor, func() error) {
+func tadcAggregateFactory(ctx context.Context, mt *mtest.T) *mongo.Cursor {
 	mt.Helper()
 
 	initCollection(mt, mt.Coll)
@@ -341,10 +341,10 @@ func tadcAggregateFactory(ctx context.Context, mt *mtest.T) (*mongo.Cursor, func
 	cursor, err := mt.Coll.Aggregate(ctx, pipe, opts)
 	require.NoError(mt, err, "Aggregate error: %v", err)
 
-	return cursor, func() error { return cursor.Close(context.Background()) }
+	return cursor
 }
 
-func tadcRunCommandCursorFactory(ctx context.Context, mt *mtest.T) (*mongo.Cursor, func() error) {
+func tadcRunCommandCursorFactory(ctx context.Context, mt *mtest.T) *mongo.Cursor {
 	mt.Helper()
 
 	initCollection(mt, mt.Coll)
@@ -358,7 +358,7 @@ func tadcRunCommandCursorFactory(ctx context.Context, mt *mtest.T) (*mongo.Curso
 	})
 	require.NoError(mt, err, "RunCommandCursor error: %v", err)
 
-	return cur, func() error { return cur.Close(context.Background()) }
+	return cur
 }
 
 // For tailable awaitData cursors, the maxTimeMS for a getMore should be
@@ -366,20 +366,40 @@ func tadcRunCommandCursorFactory(ctx context.Context, mt *mtest.T) (*mongo.Curso
 // server more opportunities to respond with an empty batch before a
 // client-side timeout.
 func TestCursor_tailableAwaitData_applyRemainingTimeout(t *testing.T) {
-	const timeout = 2000 * time.Millisecond
+	const timeoutMS = 2500
+
+	var (
+		// maxAwaitTimeMS should be half the timeoutMS to ensure that the user
+		// provided timeout is used after the first getMore.
+		maxAwaitTimeMS = int(float64(timeoutMS) / 2.0)
+
+		// blockTimeMS should be a fraction of the timeoutMS and strictly less
+		// than maxAwaitTimeMS to ensure that the second getMore uses the remaining
+		// time in the context rather than maxAwaitTimeMS.
+		blockTimeMS = int((1.0 / 4.0) * float64(timeoutMS))
+
+		// In theory, the first getMore of the relevant Next call should get a
+		// of maxTimeMS approximately maxAwaitTimeMS (upto the calculation). Since
+		// we block on that getMore for blockTimeMS, the second getMore should
+		// calculate its maxTimeMS based on the remaining time in the context. We
+		// add a buffer of 1/70th the delta to account for network latency and
+		// processing time.
+		delta        = maxAwaitTimeMS - blockTimeMS
+		getMoreBound = int(float64(delta) * (1.0 + 1.0/70.0))
+	)
 
 	// Setup mtest instance.
-	mt := mtest.New(t, mtest.NewOptions().CreateClient(false))
+	mt := mtest.New(t, mtest.NewOptions().CreateClient(false).MinServerVersion("4.2"))
 
 	cappedOpts := options.CreateCollection().SetCapped(true).
 		SetSizeInBytes(1024 * 64)
 
-	// TODO(SERVER-96344): mongos doesn't honor a failpoint's full blockTimeMS.
+	// TODO(GODRIVER-3328): mongos doesn't honor a failpoint's full blockTimeMS.
 	baseTopologies := []mtest.TopologyKind{mtest.Single, mtest.LoadBalanced, mtest.ReplicaSet}
 
 	type testCase struct {
 		name       string
-		factory    func(ctx context.Context, mt *mtest.T) (*mongo.Cursor, func() error)
+		factory    func(ctx context.Context, mt *mtest.T) *mongo.Cursor
 		opTimeout  bool
 		topologies []mtest.TopologyKind
 
@@ -441,7 +461,7 @@ func TestCursor_tailableAwaitData_applyRemainingTimeout(t *testing.T) {
 		caseOpts = caseOpts.Topologies(tc.topologies...)
 
 		if !tc.opTimeout {
-			caseOpts = mtOpts.ClientOptions(options.Client().SetTimeout(timeout))
+			caseOpts = mtOpts.ClientOptions(options.Client().SetTimeout(timeoutMS * time.Millisecond))
 		}
 
 		mt.RunOpts(tc.name, caseOpts, func(mt *mtest.T) {
@@ -451,7 +471,7 @@ func TestCursor_tailableAwaitData_applyRemainingTimeout(t *testing.T) {
 				Data: failpoint.Data{
 					FailCommands:    []string{"getMore"},
 					BlockConnection: true,
-					BlockTimeMS:     300,
+					BlockTimeMS:     int32(blockTimeMS),
 				},
 			})
 
@@ -459,22 +479,23 @@ func TestCursor_tailableAwaitData_applyRemainingTimeout(t *testing.T) {
 
 			var cancel context.CancelFunc
 			if tc.opTimeout {
-				ctx, cancel = context.WithTimeout(ctx, timeout)
+				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeoutMS)*time.Millisecond)
 				defer cancel()
 			}
 
-			cur, cleanup := tc.factory(ctx, mt)
-			defer func() { assert.NoError(mt, cleanup()) }()
+			cur := tc.factory(ctx, mt)
+			defer func() { assert.NoError(mt, cur.Close(context.Background())) }()
 
 			require.NoError(mt, cur.Err())
 
-			cur.SetMaxAwaitTime(1000 * time.Millisecond)
+			cur.SetMaxAwaitTime(time.Duration(maxAwaitTimeMS) * time.Millisecond)
 
 			if tc.consumeFirstBatch {
 				assert.True(mt, cur.Next(ctx)) // consume first batch item
 			}
 
 			mt.ClearEvents()
+
 			assert.False(mt, cur.Next(ctx))
 
 			require.Error(mt, cur.Err(), "expected error from cursor.Next")
@@ -491,13 +512,13 @@ func TestCursor_tailableAwaitData_applyRemainingTimeout(t *testing.T) {
 
 			// The first getMore should have a maxTimeMS of <= 100ms but greater
 			// than 71ms, indicating that the maxAwaitTimeMS was used.
-			assert.LessOrEqual(mt, parseMaxAwaitTime(mt, getMoreEvts[0]), int64(1000))
-			assert.Greater(mt, parseMaxAwaitTime(mt, getMoreEvts[0]), int64(710))
+			assert.LessOrEqual(mt, parseMaxAwaitTime(mt, getMoreEvts[0]), int64(maxAwaitTimeMS))
+			assert.Greater(mt, parseMaxAwaitTime(mt, getMoreEvts[0]), int64(getMoreBound))
 
 			// The second getMore should have a maxTimeMS of <=71, indicating that we
 			// are using the time remaining in the context rather than the
 			// maxAwaitTimeMS.
-			assert.LessOrEqual(mt, parseMaxAwaitTime(mt, getMoreEvts[1]), int64(710))
+			assert.LessOrEqual(mt, parseMaxAwaitTime(mt, getMoreEvts[1]), int64(getMoreBound))
 		})
 	}
 }
