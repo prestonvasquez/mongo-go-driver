@@ -525,16 +525,21 @@ func TestConvenientTransactions(t *testing.T) {
 	t.Run("slow operation in callback retries", func(t *testing.T) {
 		withTransactionTimeout = 2 * time.Second
 
-		coll := db.Collection("test")
-		// Explicitly create the collection on server because implicit collection creation is not allowed in
-		// transactions for server versions <= 4.2.
-		err := db.RunCommand(bgCtx, bson.D{{"create", coll.Name()}}).Err()
+		const appName = "slowOpRetryTest"
+		testClient := setupConvenientTransactions(t,
+			options.Client().SetAppName(appName))
+		defer func() { _ = testClient.Disconnect(bgCtx) }()
+
+		testDB := testClient.Database("TestConvenientTransactions")
+		testDBAdmin := testClient.Database("admin")
+		coll := testDB.Collection("test")
+
+		err := testDB.RunCommand(bgCtx, bson.D{{"create", coll.Name()}}).Err()
 		assert.Nil(t, err, "error creating collection on server: %v", err)
 		defer func() {
 			_ = coll.Drop(bgCtx)
 		}()
 
-		// Set failpoint to block insertOne once for 500ms.
 		failpoint := bson.D{
 			{"configureFailPoint", "failCommand"},
 			{"mode", bson.D{
@@ -544,19 +549,20 @@ func TestConvenientTransactions(t *testing.T) {
 				{"failCommands", bson.A{"insert"}},
 				{"blockConnection", true},
 				{"blockTimeMS", 500},
+				{"appName", appName},
 			}},
 		}
-		err = dbAdmin.RunCommand(bgCtx, failpoint).Err()
+		err = testDBAdmin.RunCommand(bgCtx, failpoint).Err()
 		assert.Nil(t, err, "error setting failpoint: %v", err)
 		defer func() {
-			err = dbAdmin.RunCommand(bgCtx, bson.D{
+			err = testDBAdmin.RunCommand(bgCtx, bson.D{
 				{"configureFailPoint", "failCommand"},
 				{"mode", "off"},
 			}).Err()
 			assert.Nil(t, err, "error turning off failpoint: %v", err)
 		}()
 
-		sess, err := client.StartSession()
+		sess, err := testClient.StartSession()
 		assert.Nil(t, err, "StartSession error: %v", err)
 		defer sess.EndSession(context.Background())
 
