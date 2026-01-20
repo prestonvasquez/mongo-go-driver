@@ -873,6 +873,12 @@ var skipTests = map[string][]string{
 	},
 }
 
+var skipShardedClusters = map[string][]string{
+	"Server FP behavior differs between sharded and all other topologies (SERVER-96344)": {
+		"TestUnifiedSpec/client-side-operations-timeout/tests/gridfs-delete.json/timeoutMS_applied_to_delete_against_the_files_collection",
+	},
+}
+
 // CheckSkip checks if the fully-qualified test name matches a list of skipped test names for a given reason.
 // If the test name matches any from a list, the reason is logged and the test is skipped.
 func CheckSkip(t *testing.T) {
@@ -880,6 +886,20 @@ func CheckSkip(t *testing.T) {
 		for _, testName := range tests {
 			if t.Name() == testName {
 				t.Skipf("Skipping due to known failure: %q", reason)
+			}
+		}
+	}
+}
+
+func CheckSkipShardedCluster(t *testing.T, topology string) {
+	if topology != "sharded" {
+		return
+	}
+
+	for reason, tests := range skipShardedClusters {
+		for _, testName := range tests {
+			if t.Name() == testName {
+				t.Skipf("Skipping on sharded cluster topology due to known failure: %q", reason)
 			}
 		}
 	}

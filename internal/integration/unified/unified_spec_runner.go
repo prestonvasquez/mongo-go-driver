@@ -109,6 +109,12 @@ func runTestFile(t *testing.T, filepath string, expectValidFail bool, opts ...*O
 		mt.RunOpts(testCase.Description, mtOpts, func(mt *mtest.T) {
 			spectest.CheckSkip(mt.T)
 
+			for _, ror := range testCase.RunOnRequirements {
+				for _, topology := range ror.Topology {
+					spectest.CheckSkipShardedCluster(mt.T, string(topology))
+				}
+			}
+
 			// Skip CSOT spec tests when SKIP_CSOT_TESTS=true. In Evergreen, we
 			// typically set that environment variable on Windows and macOS
 			// because the CSOT spec tests are unreliable on those hosts.
