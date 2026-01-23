@@ -81,27 +81,27 @@ func executeStartTransaction(ctx context.Context, operation *operation) (*operat
 	return newErrorResult(sess.StartTransaction(opts)), nil
 }
 
-func executeWithTransaction(ctx context.Context, op *operation, loopDone <-chan struct{}) error {
+func executeWithTransaction(ctx context.Context, op *operation, loopDone <-chan struct{}) (*operationResult, error) {
 	sess, err := entities(ctx).session(op.Object)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Process the "callback" argument. This is an array of operation objects, each of which should be executed inside
 	// the transaction.
 	callback, err := op.Arguments.LookupErr("callback")
 	if err != nil {
-		return newMissingArgumentError("callback")
+		return nil, newMissingArgumentError("callback")
 	}
 	var operations []*operation
 	if err := callback.Unmarshal(&operations); err != nil {
-		return fmt.Errorf("error transforming callback option to slice of operations: %v", err)
+		return nil, fmt.Errorf("error transforming callback option to slice of operations: %v", err)
 	}
 
 	// Remove the "callback" field and process the other options.
 	var temp transactionOptions
 	if err := bson.Unmarshal(removeFieldsFromDocument(op.Arguments, "callback"), &temp); err != nil {
-		return fmt.Errorf("error unmarshalling arguments to transactionOptions: %v", err)
+		return nil, fmt.Errorf("error unmarshalling arguments to transactionOptions: %v", err)
 	}
 
 	_, err = sess.WithTransaction(ctx, func(ctx context.Context) (any, error) {
@@ -112,7 +112,7 @@ func executeWithTransaction(ctx context.Context, op *operation, loopDone <-chan 
 		}
 		return nil, nil
 	}, temp.TransactionOptionsBuilder)
-	return err
+	return newErrorResult(err), nil
 }
 
 func executeGetSnapshotTime(ctx context.Context, op *operation) (*operationResult, error) {

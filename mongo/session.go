@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/internal/csot"
 	"go.mongodb.org/mongo-driver/v2/internal/mongoutil"
 	"go.mongodb.org/mongo-driver/v2/internal/serverselector"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -121,6 +122,12 @@ func (s *Session) WithTransaction(
 	fn func(ctx context.Context) (any, error),
 	opts ...options.Lister[options.TransactionOptions],
 ) (any, error) {
+	// Apply client timeout to context if set, so that ctx.Err() reflects the
+	// CSOT deadline and WithTransaction exits via the ctx.Err() check instead
+	// of retrying on TransientTransactionError.
+	ctx, cancel := csot.WithTimeout(ctx, s.client.timeout)
+	defer cancel()
+
 	timeout := time.NewTimer(withTransactionTimeout)
 	defer timeout.Stop()
 	var err error
@@ -243,7 +250,7 @@ func (s *Session) AbortTransaction(ctx context.Context) error {
 	_ = operation.NewAbortTransaction().Session(s.clientSession).ClusterClock(s.client.clock).Database("admin").
 		Deployment(s.deployment).WriteConcern(s.clientSession.CurrentWc).ServerSelector(selector).
 		Retry(driver.RetryOncePerCommand).CommandMonitor(s.client.monitor).
-		RecoveryToken(bsoncore.Document(s.clientSession.RecoveryToken)).ServerAPI(s.client.serverAPI).
+		RecoveryToken(bsoncore.Document(s.clientSession.RecoveryToken)).ServerAPI(s.client.serverAPI).Timeout(s.client.timeout).
 		Authenticator(s.client.authenticator).Execute(ctx)
 
 	s.clientSession.Aborting = false
@@ -278,7 +285,7 @@ func (s *Session) CommitTransaction(ctx context.Context) error {
 		Session(s.clientSession).ClusterClock(s.client.clock).Database("admin").Deployment(s.deployment).
 		WriteConcern(s.clientSession.CurrentWc).ServerSelector(selector).Retry(driver.RetryOncePerCommand).
 		CommandMonitor(s.client.monitor).RecoveryToken(bsoncore.Document(s.clientSession.RecoveryToken)).
-		ServerAPI(s.client.serverAPI).Authenticator(s.client.authenticator)
+		ServerAPI(s.client.serverAPI).Authenticator(s.client.authenticator).Timeout(s.client.timeout)
 
 	err = op.Execute(ctx)
 	// Return error without updating transaction state if it is a timeout, as the transaction has not

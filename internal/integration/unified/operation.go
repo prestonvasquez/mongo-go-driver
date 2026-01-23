@@ -126,7 +126,7 @@ func (op *operation) run(ctx context.Context, loopDone <-chan struct{}) (*operat
 		return executeStartTransaction(ctx, op)
 	case "withTransaction":
 		// executeWithTransaction internally verifies results/errors for each operation, so it doesn't return a result.
-		return newEmptyResult(), executeWithTransaction(ctx, op, loopDone)
+		return executeWithTransaction(ctx, op, loopDone)
 	case "getSnapshotTime":
 		// executeGetSnapshotTime stores the snapshot time of the session as on
 		// the entity map for subsequent use.

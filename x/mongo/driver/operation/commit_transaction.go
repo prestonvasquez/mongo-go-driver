@@ -9,6 +9,7 @@ package operation
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/internal/driverutil"
@@ -33,6 +34,7 @@ type CommitTransaction struct {
 	writeConcern  *writeconcern.WriteConcern
 	retry         *driver.RetryMode
 	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 }
 
 // NewCommitTransaction constructs and returns a new CommitTransaction.
@@ -66,12 +68,11 @@ func (ct *CommitTransaction) Execute(ctx context.Context) error {
 		ServerAPI:         ct.serverAPI,
 		Name:              driverutil.CommitTransactionOp,
 		Authenticator:     ct.authenticator,
+		Timeout:           ct.timeout,
 	}.Execute(ctx)
-
 }
 
 func (ct *CommitTransaction) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
-
 	dst = bsoncore.AppendInt32Element(dst, "commitTransaction", 1)
 	if ct.recoveryToken != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "recoveryToken", ct.recoveryToken)
@@ -197,5 +198,15 @@ func (ct *CommitTransaction) Authenticator(authenticator driver.Authenticator) *
 	}
 
 	ct.authenticator = authenticator
+	return ct
+}
+
+func (ct *CommitTransaction) Timeout(timeout *time.Duration) *CommitTransaction {
+	if ct == nil {
+		ct = new(CommitTransaction)
+	}
+
+	ct.timeout = timeout
+
 	return ct
 }

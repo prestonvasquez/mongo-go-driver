@@ -9,6 +9,7 @@ package operation
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/internal/driverutil"
@@ -34,6 +35,7 @@ type AbortTransaction struct {
 	writeConcern  *writeconcern.WriteConcern
 	retry         *driver.RetryMode
 	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 }
 
 // NewAbortTransaction constructs and returns a new AbortTransaction.
@@ -67,12 +69,11 @@ func (at *AbortTransaction) Execute(ctx context.Context) error {
 		ServerAPI:         at.serverAPI,
 		Name:              driverutil.AbortTransactionOp,
 		Authenticator:     at.authenticator,
+		Timeout:           at.timeout,
 	}.Execute(ctx)
-
 }
 
 func (at *AbortTransaction) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
-
 	dst = bsoncore.AppendInt32Element(dst, "abortTransaction", 1)
 	if at.recoveryToken != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "recoveryToken", at.recoveryToken)
@@ -208,5 +209,14 @@ func (at *AbortTransaction) Authenticator(authenticator driver.Authenticator) *A
 	}
 
 	at.authenticator = authenticator
+	return at
+}
+
+func (at *AbortTransaction) Timeout(timeout *time.Duration) *AbortTransaction {
+	if at == nil {
+		at = new(AbortTransaction)
+	}
+
+	at.timeout = timeout
 	return at
 }
