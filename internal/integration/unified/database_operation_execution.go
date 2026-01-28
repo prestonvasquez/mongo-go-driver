@@ -442,7 +442,8 @@ func executeCreateRunCursorCommand(ctx context.Context, operation *operation) (*
 	}
 
 	if cursorID := operation.ResultEntityID; cursorID != nil {
-		err := entities(ctx).addCursorEntity(*cursorID, cursor)
+		// Pass the operation timeout so it can be applied to subsequent iteration calls.
+		err := entities(ctx).addCursorEntity(*cursorID, cursor, operationTimeout(ctx))
 		if err != nil {
 			return nil, fmt.Errorf("failed to store result as cursor entity: %w", err)
 		}

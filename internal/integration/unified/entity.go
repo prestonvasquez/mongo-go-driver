@@ -204,7 +204,7 @@ type clientEncryptionOpts struct {
 // Accessors are available for the BSON entities.
 type EntityMap struct {
 	allEntities              map[string]struct{}
-	cursorEntities           map[string]cursor
+	cursorEntities           map[string]*cursorEntity
 	clientEntities           map[string]*clientEntity
 	dbEntites                map[string]*mongo.Database
 	collEntities             map[string]*mongo.Collection
@@ -238,7 +238,7 @@ func newEntityMap() *EntityMap {
 		allEntities:              make(map[string]struct{}),
 		gridfsBuckets:            make(map[string]*mongo.GridFSBucket),
 		bsonValues:               make(map[string]bson.RawValue),
-		cursorEntities:           make(map[string]cursor),
+		cursorEntities:           make(map[string]*cursorEntity),
 		clientEntities:           make(map[string]*clientEntity),
 		collEntities:             make(map[string]*mongo.Collection),
 		dbEntites:                make(map[string]*mongo.Database),
@@ -281,13 +281,16 @@ func (em *EntityMap) addBSONEntity(id string, val any) error {
 	return nil
 }
 
-func (em *EntityMap) addCursorEntity(id string, cursor cursor) error {
+func (em *EntityMap) addCursorEntity(id string, csr cursor, timeout *time.Duration) error {
 	if err := em.verifyEntityDoesNotExist(id); err != nil {
 		return err
 	}
 
 	em.allEntities[id] = struct{}{}
-	em.cursorEntities[id] = cursor
+	em.cursorEntities[id] = &cursorEntity{
+		cursor:  csr,
+		timeout: timeout,
+	}
 	return nil
 }
 
@@ -408,12 +411,12 @@ func (em *EntityMap) gridFSBucket(id string) (*mongo.GridFSBucket, error) {
 	return bucket, nil
 }
 
-func (em *EntityMap) cursor(id string) (cursor, error) {
-	cursor, ok := em.cursorEntities[id]
+func (em *EntityMap) cursor(id string) (*cursorEntity, error) {
+	cursorEnt, ok := em.cursorEntities[id]
 	if !ok {
 		return nil, newEntityNotFoundError("cursor", id)
 	}
-	return cursor, nil
+	return cursorEnt, nil
 }
 
 func (em *EntityMap) client(id string) (*clientEntity, error) {
@@ -524,8 +527,8 @@ func (em *EntityMap) close(ctx context.Context) []error {
 	}
 
 	var errs []error
-	for id, cursor := range em.cursorEntities {
-		if err := cursor.Close(ctx); err != nil {
+	for id, cursorEnt := range em.cursorEntities {
+		if err := cursorEnt.cursor.Close(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("error closing cursor with ID %q: %w", id, err))
 		}
 	}

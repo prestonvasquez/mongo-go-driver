@@ -9,6 +9,7 @@ package unified
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -30,6 +31,9 @@ const (
 	targetedFailPointsKey ctxKey = "test-targeted-failpoints"
 	clientLogMessagesKey  ctxKey = "test-expected-log-message-count"
 	ignoreLogMessagesKey  ctxKey = "test-ignore-log-message-count"
+	// operationTimeoutKey stores the timeoutMS value for the current operation. This is used to associate
+	// the timeout with cursor entities so it can be applied to subsequent iteration calls.
+	operationTimeoutKey ctxKey = "operation-timeout"
 )
 
 // newTestContext creates a new Context derived from ctx with values initialized to store the state required for test
@@ -77,6 +81,15 @@ func targetedFailPoints(ctx context.Context) map[string]string {
 
 func entities(ctx context.Context) *EntityMap {
 	return ctx.Value(entitiesKey).(*EntityMap)
+}
+
+// operationTimeout retrieves the timeoutMS value stored in the context for the current operation.
+// Returns nil if no timeout was specified.
+func operationTimeout(ctx context.Context) *time.Duration {
+	if v := ctx.Value(operationTimeoutKey); v != nil {
+		return v.(*time.Duration)
+	}
+	return nil
 }
 
 func expectedLogMessagesCount(ctx context.Context, clientID string) int {

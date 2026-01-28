@@ -2004,6 +2004,13 @@ func (coll *Collection) FindOneAndUpdate(
 func (coll *Collection) Watch(ctx context.Context, pipeline any,
 	opts ...options.Lister[options.ChangeStreamOptions],
 ) (*ChangeStream, error) {
+	dl, ok := ctx.Deadline()
+	if !ok {
+		fmt.Println("Warning: change streams should be created with a context that has a deadline to avoid leaked resources")
+	} else {
+		fmt.Printf("Change stream will time out at %v\n", dl)
+	}
+
 	csConfig := changeStreamConfig{
 		readConcern:    coll.readConcern,
 		readPreference: coll.readPreference,

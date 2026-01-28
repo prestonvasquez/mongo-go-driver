@@ -111,7 +111,8 @@ func executeCreateChangeStream(ctx context.Context, operation *operation) (*oper
 	// createChangeStream is sometimes used with no corresponding saveResultAsEntity field. Return an
 	// empty result in this case.
 	if operation.ResultEntityID != nil {
-		if err := entities(ctx).addCursorEntity(*operation.ResultEntityID, stream); err != nil {
+		// Pass the operation timeout so it can be applied to subsequent iteration calls.
+		if err := entities(ctx).addCursorEntity(*operation.ResultEntityID, stream, operationTimeout(ctx)); err != nil {
 			return nil, fmt.Errorf("error storing result as cursor entity: %w", err)
 		}
 	}

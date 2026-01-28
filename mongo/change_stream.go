@@ -640,7 +640,7 @@ func (cs *ChangeStream) TryNext(ctx context.Context) bool {
 
 func (cs *ChangeStream) next(ctx context.Context, nonBlocking bool) bool {
 	// return false right away if the change stream has already errored or if cursor is closed.
-	if cs.err != nil {
+	if cs.err != nil && !errors.Is(cs.err, context.DeadlineExceeded) {
 		return false
 	}
 

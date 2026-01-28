@@ -762,7 +762,8 @@ func executeCreateFindCursor(ctx context.Context, operation *operation) (*operat
 	if operation.ResultEntityID == nil {
 		return nil, fmt.Errorf("no entity name provided to store executeCreateFindCursor result")
 	}
-	if err := entities(ctx).addCursorEntity(*operation.ResultEntityID, result.cursor); err != nil {
+	// Pass the operation timeout so it can be applied to subsequent iteration calls.
+	if err := entities(ctx).addCursorEntity(*operation.ResultEntityID, result.cursor, operationTimeout(ctx)); err != nil {
 		return nil, fmt.Errorf("error storing result as cursor entity: %w", err)
 	}
 	return newEmptyResult(), nil

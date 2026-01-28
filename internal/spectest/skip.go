@@ -416,7 +416,7 @@ var skipTests = map[string][]string{
 	"Ensure change streams resume with CSOT failure (GODRIVER-3380)": {
 		"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/timeoutMS_is_refreshed_for_getMore_if_maxAwaitTimeMS_is_not_set",
 		"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/timeoutMS_is_refreshed_for_getMore_if_maxAwaitTimeMS_is_set",
-		"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/timeoutMS_applies_to_full_resume_attempt_in_a_next_call",
+		//"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/timeoutMS_applies_to_full_resume_attempt_in_a_next_call",
 		"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/change_stream_can_be_iterated_again_if_previous_iteration_times_out",
 		"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/timeoutMS_is_refreshed_for_getMore_-_failure",
 		"TestUnifiedSpec/client-side-operations-timeout/tests/change-streams.json/error_if_maxAwaitTimeMS_is_greater_than_timeoutMS",

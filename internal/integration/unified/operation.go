@@ -108,6 +108,10 @@ func (op *operation) run(ctx context.Context, loopDone <-chan struct{}) (*operat
 		// Cancel the timeout-derived context at the end of run to avoid a context leak.
 		defer cancelFunc()
 
+		// Store the timeout value in context so cursor-creating operations can associate
+		// it with the cursor entity for use in subsequent iteration calls.
+		ctx = context.WithValue(ctx, operationTimeoutKey, &timeout)
+
 		// Set op.Arguments to a new document that has the "timeoutMS" field removed
 		// so individual operations do not have to account for it.
 		op.Arguments = removeFieldsFromDocument(op.Arguments, "timeoutMS")
@@ -241,8 +245,8 @@ func (op *operation) run(ctx context.Context, loopDone <-chan struct{}) (*operat
 
 	// Cursor operations
 	case "close":
-		if cursor, err := entities(ctx).cursor(op.Object); err == nil {
-			_ = cursor.Close(ctx)
+		if cursorEntity, err := entities(ctx).cursor(op.Object); err == nil {
+			_ = cursorEntity.cursor.Close(ctx)
 
 			return newEmptyResult(), nil
 		}

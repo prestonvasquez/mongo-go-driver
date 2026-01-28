@@ -8,6 +8,7 @@ package unified
 
 import (
 	"context"
+	"time"
 )
 
 // The cursor interface defines the methods that must be implemented by iterable types that can be stored in an
@@ -19,4 +20,12 @@ type cursor interface {
 	Err() error
 	Next(context.Context) bool
 	TryNext(context.Context) bool
+}
+
+// cursorEntity wraps a cursor with optional timeout information. When a cursor is created with a timeoutMS option,
+// the timeout is stored here so it can be applied to subsequent iteration calls. This supports the CSOT spec
+// requirement that timeoutMS on cursor constructors should apply to each iteration call.
+type cursorEntity struct {
+	cursor  cursor
+	timeout *time.Duration
 }
