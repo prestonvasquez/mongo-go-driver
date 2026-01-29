@@ -608,9 +608,19 @@ func (op Operation) Execute(ctx context.Context) error {
 		retries--
 		prevErr = err
 
-		// Set the previous indefinite error to be returned in any case where a retryable write error does not have a
-		// NoWritesPerfomed label (the definite case).
-		if lerr, ok := err.(labeledError); ok {
+		// Set the previous indefinite error to be returned in any case where a
+		// retryable write error does not have a NoWritesPerfomed label (the
+		// definite case).
+		//
+		// Per the retryable writes spec: only update previousError for errors that
+		// originate from the server, not for driver-generated errors like context
+		// deadline exceeded or canceled. Server errors have a non-zero error code,
+		// while driver-generated errors (timeouts, network errors) do not.
+		isServerError := false
+		if e, ok := err.(Error); ok && e.Code != 0 {
+			isServerError = true
+		}
+		if lerr, ok := err.(labeledError); ok && isServerError {
 			// If the "prevIndefiniteErr" is nil, then the current error is the first error encountered
 			// during the retry attempt cycle. We must persist the first error in the case where all
 			// following errors are labeled "NoWritesPerformed", which would otherwise raise nil as the
@@ -660,8 +670,12 @@ func (op Operation) Execute(ctx context.Context) error {
 	for {
 		// If we're starting a retry and the error from the previous try was
 		// a context canceled or deadline exceeded error, stop retrying and
-		// return that error.
+		// return the previous indefinite error (the last server error) per the
+		// retryable writes spec. Fall back to prevErr if no server error was recorded.
 		if errors.Is(prevErr, context.Canceled) || errors.Is(prevErr, context.DeadlineExceeded) {
+			if prevIndefiniteErr != nil {
+				return prevIndefiniteErr
+			}
 			return prevErr
 		}
 
@@ -679,8 +693,12 @@ func (op Operation) Execute(ctx context.Context) error {
 					continue
 				}
 
-				// If this is a retry and there's an error from a previous attempt, return the previous
-				// error instead of the current connection error.
+				// If this is a retry and there's a server error from a previous attempt, return the
+				// previous server error instead of the current connection error per the retryable
+				// writes spec. Fall back to prevErr, then the current error.
+				if prevIndefiniteErr != nil {
+					return prevIndefiniteErr
+				}
 				if prevErr != nil {
 					return prevErr
 				}
