@@ -76,6 +76,26 @@ var (
 		context.DeadlineExceeded)
 )
 
+// errorWithUnderlying wraps a primary error with an underlying error that can
+// be accessed via errors.As/errors.Is but is not visible in the error message.
+// This is used to wrap timeout errors with the underlying server error.
+type errorWithUnderlying struct {
+	primary    error
+	underlying error
+}
+
+// Error returns only the primary error message.
+func (e errorWithUnderlying) Error() string {
+	return e.primary.Error()
+}
+
+// Unwrap returns both errors so errors.Is/errors.As can find either.
+// The underlying error is first so errors.As finds it before any error
+// in the primary chain that might also match.
+func (e errorWithUnderlying) Unwrap() []error {
+	return []error{e.underlying, e.primary}
+}
+
 // QueryFailureError is an error representing a command failure as a document.
 type QueryFailureError struct {
 	Message  string

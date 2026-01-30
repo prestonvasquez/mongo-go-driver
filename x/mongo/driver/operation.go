@@ -608,30 +608,24 @@ func (op Operation) Execute(ctx context.Context) error {
 		retries--
 		prevErr = err
 
-		// Set the previous indefinite error to be returned in any case where a
-		// retryable write error does not have a NoWritesPerfomed label (the
-		// definite case).
-		//
-		// Per the retryable writes spec: only update previousError for errors that
-		// originate from the server, not for driver-generated errors like context
-		// deadline exceeded or canceled. Server errors have a non-zero error code,
-		// while driver-generated errors (timeouts, network errors) do not.
-		isServerError := false
-		if e, ok := err.(Error); ok && e.Code != 0 {
-			isServerError = true
+		// If previousError is nil, set it to the current error. This persists
+		// the first error in case all subsequent errors have NoWritesPerformed.
+		if prevIndefiniteErr == nil {
+			prevIndefiniteErr = err
 		}
-		if lerr, ok := err.(labeledError); ok && isServerError {
-			// If the "prevIndefiniteErr" is nil, then the current error is the first error encountered
-			// during the retry attempt cycle. We must persist the first error in the case where all
-			// following errors are labeled "NoWritesPerformed", which would otherwise raise nil as the
-			// error.
-			if prevIndefiniteErr == nil {
-				prevIndefiniteErr = lerr
-			}
 
-			// If the error is not labeled NoWritesPerformed and is retryable, then set the previous
-			// indefinite error to be the current error.
-			if !lerr.HasErrorLabel(NoWritesPerformed) && lerr.HasErrorLabel(RetryableWriteError) {
+		// For exceptions that originate from the driver (e.g. no socket available
+		// from the connection pool), we should not overwrite the previous error.
+		// Only update previousError if:
+		// - currentError is not a DriverException (has a server error code)
+		// - currentError does not have the NoWritesPerformed label
+		// - currentError is not a CSOT timeout exception
+		var serverErr Error
+		isDriverException := !errors.As(err, &serverErr) || serverErr.Code == 0
+		isCSOTTimeout := errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+
+		if lerr, ok := err.(labeledError); ok {
+			if !isDriverException && !lerr.HasErrorLabel(NoWritesPerformed) && !isCSOTTimeout {
 				prevIndefiniteErr = err
 			}
 		}
@@ -670,11 +664,12 @@ func (op Operation) Execute(ctx context.Context) error {
 	for {
 		// If we're starting a retry and the error from the previous try was
 		// a context canceled or deadline exceeded error, stop retrying and
-		// return the previous indefinite error (the last server error) per the
-		// retryable writes spec. Fall back to prevErr if no server error was recorded.
+		// return that error. If there was an underlying server error, wrap it
+		// so users can access it via errors.As() without changing the primary
+		// error message.
 		if errors.Is(prevErr, context.Canceled) || errors.Is(prevErr, context.DeadlineExceeded) {
 			if prevIndefiniteErr != nil {
-				return prevIndefiniteErr
+				return errorWithUnderlying{primary: prevErr, underlying: prevIndefiniteErr}
 			}
 			return prevErr
 		}
