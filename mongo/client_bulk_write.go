@@ -46,6 +46,7 @@ type clientBulkWrite struct {
 	writeConcern             *writeconcern.WriteConcern
 	rawData                  *bool
 	additionalCmd            bson.D
+	nsInfoUUIDCallback       func(string) []byte
 
 	maxAdaptiveRetries        uint
 	enableOverloadRetargeting bool
@@ -63,12 +64,13 @@ func (bw *clientBulkWrite) execute(ctx context.Context) error {
 		}
 	}
 	batches := &modelBatches{
-		session:    bw.session,
-		client:     bw.client,
-		ordered:    bw.ordered == nil || *bw.ordered,
-		writePairs: bw.writePairs,
-		result:     &bw.result,
-		retryMode:  driver.RetryOnce,
+		session:            bw.session,
+		client:             bw.client,
+		ordered:            bw.ordered == nil || *bw.ordered,
+		writePairs:         bw.writePairs,
+		result:             &bw.result,
+		retryMode:          driver.RetryOnce,
+		nsInfoUUIDCallback: bw.nsInfoUUIDCallback,
 	}
 	err := driver.Operation{
 		CommandFn:                 bw.newCommand(),
@@ -199,8 +201,9 @@ type modelBatches struct {
 	session *session.Client
 	client  *Client
 
-	ordered    bool
-	writePairs []clientBulkWritePair
+	ordered            bool
+	writePairs         []clientBulkWritePair
+	nsInfoUUIDCallback func(string) []byte
 
 	offset int
 
@@ -281,14 +284,19 @@ func (mb *modelBatches) appendBatches(fn functionSet, dst []byte, maxCount, tota
 	mb.cursorHandlers = mb.cursorHandlers[:0]
 	mb.newIDMap = make(map[int]any)
 
-	nsMap := make(map[string]int)
-	getNsIndex := func(namespace string) (int, bool) {
-		v, ok := nsMap[namespace]
+	type nsKey struct {
+		namespace string
+		uuid      string
+	}
+	nsMap := make(map[nsKey]int)
+	getNsIndex := func(namespace string, uuid []byte) (int, bool) {
+		key := nsKey{namespace: namespace, uuid: string(uuid)}
+		v, ok := nsMap[key]
 		if ok {
 			return v, ok
 		}
 		nsIdx := len(nsMap)
-		nsMap[namespace] = nsIdx
+		nsMap[key] = nsIdx
 		return nsIdx, ok
 	}
 
@@ -307,7 +315,11 @@ func (mb *modelBatches) appendBatches(fn functionSet, dst []byte, maxCount, tota
 		}
 
 		ns := mb.writePairs[i].namespace
-		nsIdx, exists := getNsIndex(ns)
+		var uuid []byte
+		if mb.nsInfoUUIDCallback != nil {
+			uuid = mb.nsInfoUUIDCallback(ns)
+		}
+		nsIdx, exists := getNsIndex(ns, uuid)
 
 		var doc bsoncore.Document
 		var err error
@@ -403,6 +415,9 @@ func (mb *modelBatches) appendBatches(fn functionSet, dst []byte, maxCount, tota
 		if !exists {
 			idx, doc := bsoncore.AppendDocumentStart(nil)
 			doc = bsoncore.AppendStringElement(doc, "ns", ns)
+			if uuid != nil {
+				doc = bsoncore.AppendBinaryElement(doc, "collectionUUID", bson.TypeBinaryUUID, uuid)
+			}
 			doc, _ = bsoncore.AppendDocumentEnd(doc, idx)
 			nsDst = fn.appendDocument(nsDst, strconv.Itoa(n), doc)
 		}

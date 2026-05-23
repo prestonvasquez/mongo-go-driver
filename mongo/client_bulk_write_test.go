@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/internal/assert"
 	"go.mongodb.org/mongo-driver/v2/internal/require"
+	"go.mongodb.org/mongo-driver/v2/x/bsonx/bsoncore"
 )
 
 func TestBatches(t *testing.T) {
@@ -96,6 +97,132 @@ func TestAppendBatchSequence(t *testing.T) {
 
 		_, ok = batches.result.DeleteResults[3]
 		assert.False(t, ok, "expected an delete results")
+	})
+	t.Run("test nsInfoUUIDCallback", func(t *testing.T) {
+		t.Parallel()
+
+		uuid1 := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+		uuid2 := []byte{17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+
+		decodeBatch := func(t *testing.T, batches *modelBatches) (ops, nsInfo []bson.Raw) {
+			t.Helper()
+			_, data, err := batches.AppendBatchArray(nil, 100, 16_000)
+			require.NoError(t, err)
+			idx, doc := bsoncore.AppendDocumentStart(nil)
+			doc = append(doc, data...)
+			doc, _ = bsoncore.AppendDocumentEnd(doc, idx)
+			var result struct {
+				Ops    []bson.Raw `bson:"ops"`
+				NsInfo []bson.Raw `bson:"nsInfo"`
+			}
+			require.NoError(t, bson.Unmarshal(doc, &result))
+			return result.Ops, result.NsInfo
+		}
+
+		nsIdxFromOp := func(t *testing.T, raw bson.Raw) int {
+			t.Helper()
+			var op struct {
+				Insert *int32 `bson:"insert"`
+			}
+			require.NoError(t, bson.Unmarshal(raw, &op))
+			require.NotNil(t, op.Insert)
+			return int(*op.Insert)
+		}
+
+		decodeNsInfo := func(t *testing.T, raw bson.Raw) (ns string, uuid []byte) {
+			t.Helper()
+			var entry struct {
+				Ns             string       `bson:"ns"`
+				CollectionUUID *bson.Binary `bson:"collectionUUID"`
+			}
+			require.NoError(t, bson.Unmarshal(raw, &entry))
+			if entry.CollectionUUID != nil {
+				return entry.Ns, entry.CollectionUUID.Data
+			}
+			return entry.Ns, nil
+		}
+
+		newUUIDTestBatches := func(t *testing.T, pairs []clientBulkWritePair) *modelBatches {
+			t.Helper()
+			client, err := newClient()
+			require.NoError(t, err)
+			return &modelBatches{
+				client:     client,
+				writePairs: pairs,
+				result:     &ClientBulkWriteResult{Acknowledged: true},
+			}
+		}
+
+		t.Run("single namespace single UUID", func(t *testing.T) {
+			t.Parallel()
+
+			i := 0
+			uuids := [][]byte{uuid1}
+			batches := newUUIDTestBatches(t, []clientBulkWritePair{
+				{"db.coll", &ClientInsertOneModel{Document: bson.D{{"x", 1}}}},
+			})
+			batches.nsInfoUUIDCallback = func(ns string) []byte {
+				uuid := uuids[i]
+				i++
+				if i == len(uuids) {
+					i = 0
+				}
+				return uuid
+			}
+
+			_, nsInfo := decodeBatch(t, batches)
+			require.Len(t, nsInfo, 1)
+			ns, uuid := decodeNsInfo(t, nsInfo[0])
+			assert.Equal(t, "db.coll", ns)
+			assert.Equal(t, uuid1, uuid)
+		})
+
+		t.Run("same namespace different UUIDs produces separate nsInfo entries", func(t *testing.T) {
+			t.Parallel()
+
+			i := 0
+			uuids := [][]byte{uuid1, uuid2}
+			batches := newUUIDTestBatches(t, []clientBulkWritePair{
+				{"db.coll", &ClientInsertOneModel{Document: bson.D{{"x", 1}}}},
+				{"db.coll", &ClientInsertOneModel{Document: bson.D{{"x", 2}}}},
+			})
+			batches.nsInfoUUIDCallback = func(ns string) []byte {
+				uuid := uuids[i]
+				i++
+				if i == len(uuids) {
+					i = 0
+				}
+				return uuid
+			}
+
+			ops, nsInfo := decodeBatch(t, batches)
+			require.Len(t, nsInfo, 2)
+
+			ns0, u0 := decodeNsInfo(t, nsInfo[0])
+			assert.Equal(t, "db.coll", ns0)
+			assert.Equal(t, uuid1, u0)
+
+			ns1, u1 := decodeNsInfo(t, nsInfo[1])
+			assert.Equal(t, "db.coll", ns1)
+			assert.Equal(t, uuid2, u1)
+
+			require.Len(t, ops, 2)
+			assert.Equal(t, 0, nsIdxFromOp(t, ops[0]))
+			assert.Equal(t, 1, nsIdxFromOp(t, ops[1]))
+		})
+
+		t.Run("no callback produces no collectionUUID", func(t *testing.T) {
+			t.Parallel()
+
+			batches := newUUIDTestBatches(t, []clientBulkWritePair{
+				{"db.coll", &ClientInsertOneModel{Document: bson.D{{"x", 1}}}},
+			})
+
+			_, nsInfo := decodeBatch(t, batches)
+			require.Len(t, nsInfo, 1)
+			_, uuid := decodeNsInfo(t, nsInfo[0])
+			assert.Nil(t, uuid)
+		})
 	})
 	t.Run("test appendBatches with totalSize", func(t *testing.T) {
 		t.Parallel()

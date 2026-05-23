@@ -120,6 +120,15 @@ func SetInternalClientBulkWriteOptions(a *options.ClientBulkWriteOptionsBuilder,
 			opts.Internal = optionsutil.WithValue(opts.Internal, key, d)
 			return nil
 		})
+	case "nsInfoUUIDCallback":
+		cb, ok := option.(func(string) []byte)
+		if !ok {
+			return typeErrFunc("func(string) []byte")
+		}
+		a.Opts = append(a.Opts, func(opts *options.ClientBulkWriteOptions) error {
+			opts.Internal = optionsutil.WithValue(opts.Internal, key, cb)
+			return nil
+		})
 	default:
 		return fmt.Errorf("unsupported option: %q", key)
 	}

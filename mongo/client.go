@@ -1047,6 +1047,9 @@ func (c *Client) BulkWrite(ctx context.Context, writes []ClientBulkWrite,
 	if additionalCmd, ok := optionsutil.Value(bwo.Internal, "addCommandFields").(bson.D); ok {
 		op.additionalCmd = additionalCmd
 	}
+	if cb, ok := optionsutil.Value(bwo.Internal, "nsInfoUUIDCallback").(func(string) []byte); ok {
+		op.nsInfoUUIDCallback = cb
+	}
 	if bwo.VerboseResults == nil || !(*bwo.VerboseResults) {
 		op.errorsOnly = true
 	} else if !acknowledged {
