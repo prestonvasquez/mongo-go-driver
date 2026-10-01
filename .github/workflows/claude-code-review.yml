@@ -43,6 +43,10 @@ jobs:
       # Route all Claude API traffic through MongoDB's Grove gateway,
       # not api.anthropic.com
       ANTHROPIC_BASE_URL: ${{ vars.GROVE_API_URL }}
+      # fork debug: Azure gateway subscription-key headers
+      ANTHROPIC_CUSTOM_HEADERS: |-
+        api-key: ${{ secrets.GROVE_API_KEY }}
+        Ocp-Apim-Subscription-Key: ${{ secrets.GROVE_API_KEY }}
       # The gateway rejects Claude Code's experimental anthropic-beta values
       # with a 400.
       CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: "1"
