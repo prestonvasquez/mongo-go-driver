@@ -38,6 +38,7 @@ jobs:
     # the workflow token only needs to check out the base ref.
     permissions:
       contents: read
+      pull-requests: write # fork debug: the workflow token posts comments
     env:
       # Route all Claude API traffic through MongoDB's Grove gateway,
       # not api.anthropic.com
@@ -50,26 +51,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-      # Without github_token the action exchanges an OIDC token for a Claude
-      # GitHub App token, which fails here (401). Use the drivers PR bot app,
-      # the same one merge-up and the Evergreen perf comment use. The token is
-      # scoped to this repository and expires when the job ends.
-      - name: Create PR bot token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.PR_APP_ID }}
-          private-key: ${{ secrets.PR_APP_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-          permission-contents: read
-          permission-issues: read
-          permission-pull-requests: write
       - name: Claude Code Review
         uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1
         with:
           # Parameter name is fixed by the action; the VALUE is our Grove key
           anthropic_api_key: ${{ secrets.GROVE_API_KEY }}
-          github_token: ${{ steps.app-token.outputs.token }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          show_full_output: true # fork debug only
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
