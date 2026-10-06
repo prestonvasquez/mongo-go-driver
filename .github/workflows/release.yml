@@ -35,12 +35,24 @@ jobs:
         with:
           app_id: ${{ vars.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          # Pre Publish merges into the next branch, which needs that branch
+          # and full history in the checkout.
+          fetch-depth: 0
       - uses: mongodb-labs/drivers-github-tools/setup@89904229eb55a063655af02f5838bd7fe76505e5 #v3
         with:
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
+      # Fail before Pre Publish tags or pushes anything.
+      - name: Release preflight
+        run: >-
+          go run ./internal/cmd/release-preflight -release-branch "$RELEASE_BRANCH" -version "$VERSION" -prev-version "$PREV_VERSION" -skip-merge-up="$SKIP_MERGE_UP"
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+          VERSION: ${{ inputs.version }}
+          PREV_VERSION: ${{ inputs.prev_version }}
+          SKIP_MERGE_UP: ${{ contains(fromJSON(vars.IGNORED_MERGE_UP_BRANCHES), github.ref_name) }}
       - name: Pre Publish
         id: pre-publish
         uses: mongodb-labs/drivers-github-tools/golang/pre-publish@89904229eb55a063655af02f5838bd7fe76505e5 #v3
