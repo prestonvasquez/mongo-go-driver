@@ -50,9 +50,11 @@ fi
 # the drivers-evergreen-tools submodule. We clone a copy here because modifying
 # the submodule directory directly doesn't work on Windows for some reason.
 if [ ! -d "$DRIVERS_TOOLS" ]; then
-  detrev=$(git ls-tree HEAD .evergreen/drivers-evergreen-tools | awk '{print $3}')
-  git clone https://github.com/mongodb-labs/drivers-evergreen-tools $DRIVERS_TOOLS
-  git -C $DRIVERS_TOOLS checkout $detrev
+  # TODO(GODRIVER-4179): Temporary, revert before merging.
+  # detrev=$(git ls-tree HEAD .evergreen/drivers-evergreen-tools | awk '{print $3}')
+  # git clone https://github.com/mongodb-labs/drivers-evergreen-tools $DRIVERS_TOOLS
+  # git -C $DRIVERS_TOOLS checkout $detrev
+  git clone -b task/godriver-4179-aws-imdsv2 https://github.com/prestonvasquez/drivers-evergreen-tools $DRIVERS_TOOLS
 fi
 
 # Write the .env file for drivers-tools.
